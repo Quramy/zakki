@@ -25,7 +25,7 @@ TypeScript 4.1 で新しく増えた `--generateTrace` というオプション�
 
 tsc 全体で Module Resolution が支配的、ということはそうそう無いため、1. はまぁ役に立たない。
 
-2. の `--extendedDiagnostics` の具体例は下記のようになる。なお、さすがに業務のレポジトリで試した結果を貼るわけにもいかないため、このエントリでは https://github.com/Quramy/ts-graphql-plugin を測定対象にしている。
+`--extendedDiagnostics` の具体例は下記のようになる。なお、さすがに業務のレポジトリで試した結果を貼るわけにもいかないため、このエントリでは https://github.com/Quramy/ts-graphql-plugin を測定対象にしている。src 配下に 70 ファイルくらい.ts があって、計測にはちょうど良いサイズ、という理由。
 
 ```
 Files:                         422
@@ -76,13 +76,15 @@ Total time:                 24.27s
 ![trace_overview](trace_overview.png)
 
 全景だと、V8 の profile を見る場合と殆ど一緒に見えるかもしれない。
-最初の薄紫色の部分は `createProgram` の時間だ。主に fs の read や parse 処理がこの辺。 `--extendedDiagnostics` で "Program time" という項があるけど、そこに該当する部分。
+最初の薄紫色の部分は `createProgram` の時間だ。主に fs の read であったり parse 処理（`ts.createSourceFile`）がこの辺。 `--extendedDiagnostics` で "Program time" という項があるけど、そこに該当する部分。
 
-反対に、最後の方にでてくる青っぽい部分はトランスパイル処理の部分。transformer による AST 返還と fs の write だ。解像度を上げて適当な event の箱を選択すると、以下のように、その event が「どの sourceFile に対して transformer を作用させたのか」がちゃんと表示されている。
+反対に、最後の方にでてくる青っぽい部分はトランスパイル処理の部分。transformer による AST 変換（`ts.transpileModule`）と fs の write だ。解像度を上げて適当な event の箱を選択すると、以下のように、その event が「どの sourceFile に対して transformer を作用させたのか」がちゃんと表示されている。
 
 ![trace_emit_each_file](trace_emit_each_file.png)
 
 このように、tracing event に対して、適切に付加情報が与えられているため、「どのファイル対する処理で時間を要しているのか」がわかるようになったのが `--generateTrace` の特徴。
+
+ちなみに、スクショ撮ってから気づいたけど、ここの path の `trasform-server.ts` ってこのコンテキストだと分かりづらい名前だった。。。(たまたま Custom Transformer を扱ってる.ts ファイルだったからだけど、別にファイル名の transform は event 名の transform とは無関係）
 
 ## Type Check と AST
 
@@ -104,7 +106,7 @@ trace 全体のうち、殆どの部分を占めている緑色の部分が Type
 ![trace_check_ast](trace_check_ast.png)
 
 付随情報として、kind, pos, end というのが並んでいるけど、これは AST Node が保持している生情報。
-ts の Utility API に position を line / col 形式に変換するメソッドがあるけど、tracing でこれを呼ぶ訳にはいかないんだろう。そのインベントリが余計な時間を追加してしまうことになるだろうし。
+TypeScript の Utility API に position を line / col 形式に変換するメソッドがあるけど、tracing でこれを呼ぶ訳にはいかないんだろう。そのインベントリが余計な時間を追加してしまうことになるだろうし。
 
 さすがに、この生情報だけだと「どこのことだよ！」ってなるので、こういうときは別の tool の力を借りよう。
 
@@ -202,6 +204,7 @@ const colorCode = {
 ## おわりに
 
 今回は tsc の`--generateTrace` オプションの出力をどう見るか、ということを書いてきたわけだけど、個人的な肌感としては、Structured Type のことまで考えて tsc チューニングしたろ！みたいなケースはまぁ多分無いんじゃないかな、と思う。冒頭で書いたように、とりあえず速くしたいのであれば、Incremental Build の方がよっぽど効果高いだろうし。
-4.1 の Recursive Conditional Type や Template Literal Type のように、どう考えても遅くなりそうな言語機能は増えてきてるから、計測の道具を持ってる事自体は悪くないだろうけど、「この type の書き方をちょっと変えるだけで爆速に！」なんて無いんじゃないかなー。取った情報とレポジトリをセットにして TS 本家の issue に投げつけることを検討した方が良いだろうね。
+
+4.1 の Recursive Conditional Type や Template Literal Type のように、どう考えても遅くなりそうな言語機能は増えてきてるから、計測の道具を持ってる事自体は悪くないだろうけど、「この type の書き方をちょっと変えるだけで爆速に！」なんて無いんじゃないかなー。取った情報とレポジトリをセットにして TypeScript 本家の issue に投げつけることを検討した方が良いだろうね。
 
 どちらかというと、Type Checker の過程が可視化されること自体の方がありがたいような気もする。Compiler API の中でも Type Checker は取っつきにくい部類だと思うけど、その Type Checker がどういう動きしながら Source File を検証してるかが理解できるというのは、Compiler API 触ったりするのが好きな人にとっては嬉しいんじゃないかな。
