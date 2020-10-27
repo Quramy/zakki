@@ -2,7 +2,7 @@
 
 ## はじめに
 
-TypeScript 4.1 で新しく増えた `--generateTrace` というオプションについて。
+TypeScript 4.1 で新しく増えた `--generateTrace` という TypeScript Compiler の profile を取得するオプションについて。
 
 [TypeScript 4.1 beta](https://devblogs.microsoft.com/typescript/announcing-typescript-4-1-beta/) でもすっ飛ばされていたネタなので、多分あまり注目されていないだろうし、
 僕もたまたま PRs を眺めていたら見つけた程度だし、他の feature と比べるとかなりニッチなのだけど、個人的に面白かったのでエントリに残しておく。
