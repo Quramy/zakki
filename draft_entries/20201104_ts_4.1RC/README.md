@@ -1,3 +1,5 @@
+# TypeScript 4.1 RC Released
+
 TypeScript 4.1 の RC がリリースされましたね。
 
 https://devblogs.microsoft.com/typescript/announcing-typescript-4-1-rc/
