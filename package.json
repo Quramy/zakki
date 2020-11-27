@@ -1,22 +1,10 @@
 {
   "name": "zakki",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
+  "private": true,
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Quramy/zakki.git"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/Quramy/zakki/issues"
-  },
-  "homepage": "https://github.com/Quramy/zakki#readme",
   "devDependencies": {
     "prettier": "^2.2.0"
   }
