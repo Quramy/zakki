@@ -18,7 +18,7 @@ $ npx @puppeteer/recorder https://github.com/Quramy --output recorded.js
 
 例として、次の GIF のような操作をしたとしよう。
 
-![Recording GitHub navigation](recording_github.gif')
+![Recording GitHub navigation](recording_github.gif)
 
 1. https://github.com/Quramy を開く
 1. ts-graphql-plugin のレポジトリを選択する
