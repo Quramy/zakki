@@ -139,9 +139,11 @@ page.$("aria/同意しました").click(); // 意図と異なった動作にな�
 
 ## ARIA Handler と CDP と AOM
 
+少し実装の話にも触れておこう。
+
 ARIA Handler や `@puppeteer/recorder` を支えているのは、 CDP(Chrome Devtool Protocol)の `Accessibility.getPartialAXTree` と `Accessibility.queryAXTree` だ。Chromium の master に merge されたのが 2020 年 10 月頭あたりなので、割と新しめのメソッド。
 
-例えばレコーディングであれば、下記のような流れになる。
+例えばレコーディング機能を自分で実装するには、次のようにすればよい。
 
 1. `DOMDebugger.setEventListenerBreakpoint` で click や key down を監視し、event 発生時に target node の Remote ID を取得
 1. 取得した node の ID をキーにして`Accessibility.getPartialAXTree` から Accessibility Tree の Node を取得
@@ -150,14 +152,20 @@ ARIA Handler や `@puppeteer/recorder` を支えているのは、 CDP(Chrome De
 ARIA Handler から実行するとき（Replay 時）は、 `Accessibility.queryAXTree` に取得した Accessibility Name や Role 情報を渡せば Puppeteer ではお馴染みの Element Handle が取得できるので、あとは `await handle.click()` のように利用するだけ。
 
 CDP のコードを軽く読んでみたが、 `Accessibility.getPartialAXTree` は AOM(Accessibility Object Model)で策定が進められている最中の `window.getComputedAccessibleNode` 関数の実体とほぼ一緒。
-要するに blink に実装されている Accessibility Tree がもっている情報（AXNode）を返却
+要するに blink に実装されている Accessibility Tree がもっている情報（AXNode）を返却している（blink が管理している AXNode は、Role が ARIA に準拠していないなどの若干の差異があるが、そこは CDP の層で吸収されてる模様）。現状では `getComputedAccessibleNode` は blink の feature flag を有効にしないと使えないが、安定して使えるようになれば CDP に頼らずとも下記のようなコードで同じことが実現できそう。
+
+```js
+window.addEventListner("click", async event => {
+  const axNode = await getComputedAccessibleNode(event.target);
+  console.log(`page.$('aria/${axNode.name}[role="${axNode.role}"]')`);
+});
+```
 
 ## 要素の一意性
 
-Accessible Name と Role だけでクエリを構築することを考えると、Recorder のようなツールを作る上で問題になりそうな点として「それが page 内で unique である保証がない」という部分と思う。
+Accessible Name と Role だけでクエリを構築することを考えると、Recorder のようなツールを作る上で問題になりそうな点として「それが page 内で unique である保証がない」が挙げられる。
 
-実際、例えば GitHub のどこかのページを開いて Accessibility Tree を開いてみればわかるが、`aria/@Quramy[role="link"]` というクエリに該当する要素は何回も出てくる。
-操作対象が登場する文脈を固定してからでないと、このようなクエリが意図通りに動かないはずだ。
+実際、例えば GitHub のどこかのページを開いて Accessibility Tree を開いてみればわかるが、`aria/@Quramy[role="link"]` というクエリに該当する要素は何回も出てくる。操作対象が登場する文脈を固定してからでないと、このようなクエリが意図通りに動かないはずだ。
 
 今回紹介した CDP の `Accessibility.queryAXTree` は、ページ全体だけでなく、特定の node 配下を検索対象にすることはできる（Puppeteer 側からみたら特定の Element Handle に対して selector を実行するのと同義）。
 
