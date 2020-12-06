@@ -6,9 +6,7 @@
 
 [Angular: ESLint サポートの現状 2020 Autumn](https://blog.lacolaco.net/2020/11/angular-state-of-linting-2020/) にあるように、Angular CLI v12 から TSLint が deprecated 扱いになる。
 
-TSLint とともに使われてきた Codelyzer で提供されてきた Rule については、今後は [angular-eslint](https://github.com/angular-eslint/angular-eslint) が提供していくことになる。
-
-実際、多くの Codelyzer ルールが angular-eslint に移植済みだ。
+TSLint とともに使われてきた Codelyzer で提供されてきた Rule については、今後は [angular-eslint](https://github.com/angular-eslint/angular-eslint) が提供していくことになる。実際、多くの Codelyzer ルールが angular-eslint に移植済みだ。
 
 ![migration checklist](eslint_checklist.png)
 
@@ -63,7 +61,7 @@ https://github.com/fkling/astexplorer/pull/553
 https://github.com/estools/esquery は ESLint でも利用されているライブラリで、AST に対して、CSS セレクタのようにクエリが書ける、という代物。
 「ある程度までクエリで対象の AST node を絞り込んでから、細かい処理を node に対する条件処理として書いていく」というのが ESLint のルールを書く基本。
 
-今回僕が実装したルールでは、ng-template の場合と `*` の場合でエラーの報告の仕方が若干ことなる仕様だったため、
+今回僕が実装したルールでは、ng-template の場合と `*ngFor` の場合でエラーの報告の仕方が若干ことなる仕様だったため、
 
 - `BoundAttribute.templateAtts[name="ngForOf"]`
 - `BoundAttribute.inputs[name="ngForOf"]`
@@ -87,4 +85,6 @@ https://github.com/angular-eslint/angular-eslint/pull/211
 - そもそも template HTML の AST がわからない -> AST Explorer で見れるようにすれば問題ない
 - ルールの実装しやすさ -> esquery が利用できるなど、むしろ angular-eslint 上で実装する方が、ツールが揃っていてやりやすい
 
-まだ幾つか未実装のCodelyzerルールがあるので、PRチャンスと思ってトライしてみたらどうだろう？
+まだ幾つか未実装の Codelyzer ルールがあるので、PR チャンスと思ってトライしてみたらどうだろう？
+
+以前、[ESLint の plugin 開発チュートリアル](https://github.com/Quramy/eslint-plugin-tutorial/blob/master/guide/README.ja.md)というものを書いたことがあるので、こちらも参考にしてほしい。AST Explorer や esquery といった基本的な登場人物について、使い方を触れてあるので。
