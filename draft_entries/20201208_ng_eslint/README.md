@@ -1,4 +1,4 @@
-# angular-eslint
+# Codelyzer Migration
 
 これは [Angular Advent Calendar 2020](https://qiita.com/advent-calendar/2020/angular) 8 日目の記事です。
 
@@ -12,7 +12,7 @@ TSLint とともに使われてきた Codelyzer で提供されてきた Rule �
 
 一方でこの移行済みチェックリストを眺めていると、`template-` prefix から始まる、すなわち HTML テンプレートを相手にしたルールは空白が多いことに気づく。
 
-「移行の上で何かしらのハードルが存在するのだろうか？」と思い、適当に一個 Codelyzer の rule を ESLint 化してみることにする。
+「移行の上で何かしらのハードルが存在するのだろうか？」と思い、適当に一個 Codelyzer のルールを ESLint 化してみることにする。
 
 対象に選んだのは [template-use-track-by-function](http://codelyzer.com/rules/template-use-track-by-function/) というルール。「`*ngFor` を使うときに、`trackBy` 関数の指定を強制する」というやつ。
 
@@ -37,19 +37,18 @@ https://github.com/fkling/astexplorer/pull/553
 
 ![Angular templateのAST](ast_explorer.png)
 
+ちなみに、 `@angular/compiler` の結果を直接参照できる機能は既に AST Explorer 上に実装されている。現状、 `@angular-eslint/template-parser` による AST 変換処理はとても薄いものなので、実はどちらの parser を使っても構造的な差異はあまりないのだが、ESLint のルール開発という文脈では `@angular-eslint/template-parser` の結果を信用するべきだろう。
+
 ## HTML AST と esquery
 
 さて、今回 Codelyzer から移植しようと思った `template-use-track-by-function` というルールは、`ngFor` を対象にしているわけだけど、これは ng-template に対して、ngFor のディレクティブを当てるか、`*ngFor` としてテンプレート構文を利用するかで二通りの書き方がある。
 
 ```html
-<ng-template
-  ngFor
-  let-item
-  [ngForOf]="items"
-  [ngForTrackBy]="trackByFn"
-></ng-template>
+<ng-template ngFor let-item [ngForOf]="items" [ngForTrackBy]="trackByFn">
+  <li>{{item.name}}</li>
+</ng-template>
 
-<li *ngFor="let item of items; trackBy: trackByFn" />
+<li *ngFor="let item of items; trackBy: trackByFn">{{item.name}}</li>
 ```
 
 触ってみてわかったけど、 `*ngFor` で書いておいても、`<ng-template>` で書いた場合と同じく、「`ngForOf` は biding attribute で、その expression は`items` である」という意味の AST Node が得られた。テンプレート構文(`*`のことね）の解釈まで `@angular/compiler` が済ませていることになる。AST のレベルで解釈が済まされている、ってことは `*` の部分、Angular にとってはマクロのように考えているのかもね。
@@ -58,8 +57,7 @@ https://github.com/fkling/astexplorer/pull/553
 
 `ngForOf` というバインディングで node を引っ掛けるには、 `BoundAttribute[name="ngForOf"]` という esquery を書けばよい。
 
-https://github.com/estools/esquery は ESLint でも利用されているライブラリで、AST に対して、CSS セレクタのようにクエリが書ける、という代物。
-「ある程度までクエリで対象の AST node を絞り込んでから、細かい処理を node に対する条件処理として書いていく」というのが ESLint のルールを書く基本。
+https://github.com/estools/esquery は ESLint でも利用いるライブラリの 1 つで、AST に対してCSS セレクタのようにクエリが書ける、という代物。「ある程度までクエリで対象の AST node を絞り込んでから、細かい処理を node に対する条件処理として書いていく」というのが ESLint のルールを書く基本。
 
 今回僕が実装したルールでは、ng-template の場合と `*ngFor` の場合でエラーの報告の仕方が若干ことなる仕様だったため、
 
@@ -73,6 +71,8 @@ https://github.com/estools/esquery は ESLint でも利用されているライ�
 ban 対象とする AST の構造がわかってしまえば、あとはこちらのものだ。
 
 Codelyzer 本家の GitHub に移植元のルールに対するテスコードが用意されているので、それを angular-eslint 側で再現していく。もともと Codelyzer からの移植を強く意識していたからか、同じようにテストコードが書けるように細かいヘルパーが用意されており、作業しやすい。
+
+![Difference of test code](test_code_diff.png)
 
 最終的に完成した PR はこちら。
 
