@@ -57,7 +57,7 @@ https://github.com/fkling/astexplorer/pull/553
 
 `ngForOf` というバインディングで node を引っ掛けるには、 `BoundAttribute[name="ngForOf"]` という esquery を書けばよい。
 
-https://github.com/estools/esquery は ESLint でも利用いるライブラリの 1 つで、AST に対してCSS セレクタのようにクエリが書ける、という代物。「ある程度までクエリで対象の AST node を絞り込んでから、細かい処理を node に対する条件処理として書いていく」というのが ESLint のルールを書く基本。
+https://github.com/estools/esquery は ESLint でも利用いるライブラリの 1 つで、AST に対して CSS セレクタのようにクエリが書ける、という代物。「ある程度までクエリで対象の AST node を絞り込んでから、細かい処理を node に対する条件処理として書いていく」というのが ESLint のルールを書く基本。
 
 今回僕が実装したルールでは、ng-template の場合と `*ngFor` の場合でエラーの報告の仕方が若干ことなる仕様だったため、
 
@@ -74,6 +74,8 @@ Codelyzer 本家の GitHub に移植元のルールに対するテスコード�
 
 ![Difference of test code](test_code_diff.png)
 
+(左: `@angular-eslint` でのテストコード | 右: `Codelyzer` でのテストコード)
+
 最終的に完成した PR はこちら。
 
 https://github.com/angular-eslint/angular-eslint/pull/211
@@ -87,4 +89,4 @@ https://github.com/angular-eslint/angular-eslint/pull/211
 
 まだ幾つか未実装の Codelyzer ルールがあるので、PR チャンスと思ってトライしてみたらどうだろう？
 
-以前、[ESLint の plugin 開発チュートリアル](https://github.com/Quramy/eslint-plugin-tutorial/blob/master/guide/README.ja.md)というものを書いたことがあるので、こちらも参考にしてほしい。AST Explorer や esquery といった基本的な登場人物について、使い方を触れてあるので。
+以前、[ESLint の plugin 開発チュートリアル](https://github.com/Quramy/eslint-plugin-tutorial/blob/master/guide/README.ja.md)というものを書いたことがあるので、こちらも参考にしてほしい。AST Explorer や esquery といった基本的な登場人物について、概念や使い方を説明してあり、AST 解析の入門に是非。
