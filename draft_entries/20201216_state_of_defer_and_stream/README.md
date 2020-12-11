@@ -1,0 +1,292 @@
+# State of `@defer` and `@stream`
+
+これは [GraphQL Advent Calendar 2020](https://qiita.com/advent-calendar/2020/graphql) 16 日目の記事です。
+
+このエントリでは、GraphQL の `@defer` と `@stream` というディレクティブについて書いていく。2020 年末現在、GraphQL spec としては Stage 1（提案段階）であり、参照実装である graphql-js には実装があるものの、今後仕様が変更される可能性がある。
+
+## `@defer` / `@stream` とは何か
+
+`@defer` と `@stream` は共にデータの取得方法を制御するためのディレクティブだ。名前が示すとおり、クエリ全体から特定の箇所の読み込みを遅延させたり、ストリーミングさせることができる。
+
+GraphQL 生みの親である Lee Byron が、[React Europe 2016](https://www.youtube.com/watch?v=ViXL0YQnioU&feature=youtu.be&t=9m4s) 言及していた。
+
+## 解決しようとしている課題
+
+ディレクティブの詳細に入る前に、GraphQL が
+
+GraphQL の魅力の 1 つは、クライアントが自由にレスポンスの形を指定し、関連するリソースを少ないリクエスト回数で取得できることだ。
+特にコロケーションと組み合わせることで、「画面描画に必要十分なレスポンスに相当するクエリ」を保守性を保ったまま構築できる。
+
+通信回数を削減させることを考えると、1 つの画面に 1 つのクエリという状態が GraphQL アプリケーションの理想とも言える。
+
+ここで厄介なのが「画面描画に必要十分な」という表現だ。クライアントは、GraphQL クエリの結果が到着しないと画面の描画を行えない。
+
+例えば次のような例を考えて欲しい。
+
+EC サイトを運用しようとしてるとしよう。次のような商品詳細ページを考えてみて欲しい。
+
+- 商品名や商品画像、定価といった基本的な属性の他に、商品の特別価格を表示する必要がある。特別価格の決定要因は展開中のキャンペーンやユーザーが保持しているクーポンなどがある（ぶっちゃけると計算が結構大変で、仕様変更のたびにサーバーサイドエンジニアが泣いている）
+
+```graphql
+query ProductDetailQuery {
+  product(id: 100) {
+    id
+    name
+    imageUrl
+    specialPrice # 計算が大変
+  }
+}
+```
+
+特別価格、`specialPrice` の取得を待っている間、ユーザーには商品に関する情報が一切表示されないことになってしまう。ローディングが終わらないので、別の画面に行ってしまったら最悪だ。折角ユーザーのために値引きしていても、コンバージョンレートを下げることになってしまう。
+
+それであれば、特別価格の取得は後回しにして、商品の基本属性だけを先に描画した方が良いだろう。
+
+別の例を考えてみよう。
+
+- この EC サイトのトップページは、現在おこなっているキャンペーン、商品カテゴリのリスト、ユーザーにおすすめの商品のリストを表示するものとする
+
+とくにスマートフォンユーザーにとって、ファーストビューにこれらのコンテンツがすべて収まるだろうか？大半のコンテンツはスクロールしないと見えないのでは？コンテンツのデータ取得すべてを待ってから画面を描画するというのは、Core Web Vitals の 1 つである LCP(Largest Contentful Paint) を悪化させる要因となる。
+
+やはりファーストビュー部分だけを先に描画しておき、それ以外のコンテンツはプレースホルダコンテンツで代替しておいて、遅延取得するようにしたくなるはずだ。
+
+２つの例を挙げたが、どちらも「すべてのデータの到着を待つことよりも、クライアントの描画を優先したい」という状況だ。
+
+実際にこのようなケースでパフォーマンスチューニングを行う場合、GraphQL のクエリを分割して対応しているのではないだろうか。
+
+```graphql
+query ProductDetailQuery {
+  product(id: 100) {
+    id
+    name
+    imageUrl
+  }
+}
+
+# パフォーマンス観点でクエリを分けました！
+query ProductDetailLazyQuery {
+  product(id: 100) {
+    id
+    specialPrice
+  }
+}
+```
+
+論理構造的には 1 つのクエリで十分だったところを複数に分割すると、コードの見通しが悪くなるし、後から他のエンジニアが見てもわかるようにコメントやドキュメント化しておかないとまた統合されてしまう可能性もある。
+またバックエンドでは、商品詳細の取得処理が複数回に分断されるため、元のコードよりもオーバーヘッドが増大してしまっている。
+
+クエリのうち、一部部分を選択的に遅延読み込みさせる仕組みがあれば、このようなクエリ分割処理をせずにすむ。これを目的に策定されているのが `@defer` と `@stream` だ。
+
+## Spec
+
+ここからはディレクティブの仕様に話を移そう。一点補足だが、以下に書く内容は [GraphQL Spec](https://github.com/graphql/graphql-spec/blob/master/rfcs/DeferStream.md) で提案されているものである。というのも、 `@defer` / `@stream` は Facebook Relay が独自に実装していたものがあり、Spec に提出された案も基本的に Relay の実装を元にしているのだが、現在は細かい点で差異があるためだ。
+
+### `@defer`
+
+`@defer` は特定のフラグメントについて、結果取得を遅延させる。 `@skip` や `@include` とは違い、フィールドには付与できない。
+
+```graphql
+fragment ProductLazyFragment on Product {
+  specialPrice
+}
+
+query ProductDetailQuery {
+  product(id: 100) {
+    id
+    name
+    ...ProductDetailLazyQuery @defer
+  }
+}
+```
+
+```graphql
+query ProductDetailQuery {
+  product(id: 100) {
+    id
+    name
+    ... on Product @defer {
+      specialPrice
+    }
+  }
+}
+```
+
+`@defer(if: false)` のように、`if` という input で制御が可能なのは `@skip` などと同等だ。また、 `@defer(label: "hogehoge")` とすることで、遅延取得対象にラベルを付与できる。
+
+### `@stream`
+
+`@stream` はリスト型のフィールドについて、データの取得を段階的に行えるようにするためのディレクティブである。以下のように利用する。
+
+```graphql
+query ProductsQuery {
+  products(first: 50) {
+    nodes @stream(initialCount: 10) {
+      id
+      name
+    }
+  }
+}
+```
+
+`if` と `label` という input は`@defer` と共通だが、`@stream` は `initialCount` という必須パラメータがあり、ここで指定した個数までは初回の取得結果に含まれる。
+
+## レスポンス形式
+
+GraphQL サーバーは、必ずしも `@defer` と `@stream` を実装する必要はない。実装していない場合、 `@defer` や `@stream` のディレクティブは完全に無視されて、これまで通りすべてのデータの完成を待ってからクライアントに届ければいいだけだ。
+
+これらのディレクティブを実装する場合、サーバー側は 1 つのリクエストから複数のペイロードをレスポンスとして返却することになる。サーバー側で利用する言語ごとに実装パターンは異なるだろうが、たとえば ReactiveX のようなストリーム型のフレームワークや、コルーチンやジェネレータを利用することになるはず。
+
+以下のクエリに対する応答を例に説明する。
+
+```graphql
+query ProductDetailQuery {
+  product(id: 100) {
+    id
+    name
+    ... on Product @defer {
+      specialPrice
+    }
+  }
+}
+```
+
+```js
+// 1st payload
+{ "data": { "product": { "id": 100, "name": "とても良い商品" } }, "hasNext": true }
+
+// 2nd payload
+{ "path": ["product"], "data": { "specialPrice": 2000 }, "hasNext": false }
+```
+
+1 つめのペイロードは、これまでの GraphQL クエリ実行結果のレスポンスと殆ど一緒だが、一点違いとして、 `hasNext: true` として、未取得のデータが残っていることを示す項目が追加されている。
+
+2 つめのペイロードが `@defer` されたフラグメントに対応する。 `path: ["product"]` という部分が「どこにパッチを当てたらよいか」を表している。この形式は GraphQL の実行エラーを示すときに出てくる `path` と同じパターンだ。上記の例の場合、2 つめのペイロードをもって全体が完成するため、 `hasNext` は `false` となる。
+
+`@stream` の場合も同様だ。 `path` に含まれる値が配列のインデックス値になる。
+
+これらをまとめて TypeScript の型定義風に書くと、以下のように表すことができる。
+
+```ts
+type AsyncExecutionResult = {
+  data: any; // データ本体
+  hasNext: boolean; // 最後かどうか
+  path?: (string | number)[]; // 2つめ以降のペイロードの場合、パッチを当てるべき場所情報
+  label?: string; // リクエスト時に label パラメータを付与した場合に、その値が詰められる
+};
+```
+
+## graphql-js
+
+GraphQL Spec の参照実装である graphql-js には v15.4.0 で `@defer` と `@stream` が実装されている。ただし、 `npm graphql@v^15.4.0` とするだけでは利用できず、 `experimental-stream-defer` をバージョンに付与してインストールする必要がある。
+
+```sh
+npm i graphql@v15.4.0-experimental-stream-defer.1
+```
+
+現状の実装では、この 2 つのディレクティブが有効であるようなリクエストを受け取った場合、`asyncIterable` なオブジェクトを解決するようになっている。
+
+```ts
+declare function graphql(
+  ...args
+): Promise<AsyncIterableIterator<any> | ExecutionResult<any, any>>;
+```
+
+実際に挙動を確認してみよう。
+
+対象となるスキーマをSDLで表現すると下記となる。スキーマの実装自体はいままでと何ら変わりがないので詳細は割愛する。[興味があるひとはここからどうぞ](https://github.com/Quramy/graphql-streaming-example/blob/main/src/schema/schema.ts)。
+
+```graphql
+type Product {
+  id: ID!
+  name: String!
+  price: Int!
+  specialPrice: Int
+}
+
+type Query {
+  products(first: Int!): [Product]
+}
+```
+
+次のコードでスキーマに対して、 `graphql` メソッドでクエリを実行する。戻り値が `asyncIterable` な場合は、`for await of` 構文で結果を表示するように切り替えておく。
+
+```ts
+import { graphql, AsyncExecutionResult, ExecutionPatchResult } from 'graphql';
+import { schema } from './schema';
+
+function isAsyncIterable(x: any): x is AsyncIterableIterator<any> {
+  return x != null && typeof x === 'object' && x[Symbol.asyncIterator];
+}
+
+function isPatch(x: AsyncExecutionResult): x is ExecutionPatchResult {
+  return 'path' in x && Array.isArray(x.path);
+}
+
+async function main() {
+  const result = await graphql({
+    source: `
+      query ProductsQuery {
+        products(first: 4) @stream(initialCount: 1, label: "stream") {
+          id
+          name
+          price
+          ... on Product @defer(label: "specialPrice") {
+            specialPrice
+          }
+        }
+      }
+    `,
+    schema,
+  });
+  if (isAsyncIterable(result)) {
+    for await (const payload of result) {
+      if (!isPatch(payload)) {
+        console.log(payload.data, payload.hasNext);
+      } else {
+        console.log(payload.path, payload.label, payload.data, payload.hasNext);
+      }
+    }
+  } else {
+    console.log(result.data);
+  }
+}
+
+main();
+```
+
+結果は次のようになる。
+
+T.B.D. ascii
+
+
+
+## `hasNext: true`
+
+特にクライアント側の処理について、もう少し踏み込んだ内容を書いていきたいのだけど、正直力付きてきているので、今回のエントリはここまでにする。
+
+今回はアドカレの期日に間に合わせる方が優先だし、そもそもこの投稿は `@defer` についての記事なのだから、書くのが大変な部分は別のペイロードにして届けることにして何の問題があるのだろう。
+
+## References
+
+- History:
+  - https://www.youtube.com/watch?v=ViXL0YQnioU&feature=youtu.be&t=9m4s : Lee Bylon の動画(React Europe 2016)
+  - https://www.apollographql.com/blog/introducing-defer-in-apollo-server-f6797c4e9d6e/ : Apollo Server (2018 の blog だが、いまだ実装されていない
+  - https://www.youtube.com/watch?v=WxPtYJRjLL0&feature=youtu.be&t=696 : F8 2019
+  - https://www.youtube.com/watch?v=icv_Pq06aOY : GraphQL Summit 2020 での動画(この RFC の champion)
+  - https://foundation.graphql.org/news/2020/12/08/improving-latency-with-defer-and-stream-directives/
+- Blog:
+  - https://kazekyo.com/posts/20201005 : 唯一？の日本語解説記事
+- Reference Implementation:
+  - https://github.com/graphql/graphql-js/pull/2319
+- Server Implementations:
+  - https://github.com/graphql/express-graphql/pull/583 : express-graphql に defer と stream をサポート
+  - https://github.com/graphql/express-graphql/pull/726
+  - https://github.com/contrawork/graphql-helix
+- Apollo Client:
+  - https://github.com/apollographql/apollo-client/blob/main/ROADMAP.md#35 で予定されている
+- Relay:
+  - https://relay.dev/docs/en/experimental/a-guided-tour-of-relay#incremental-data-delivery : ドキュメントはおそらくこれ。思いっきり `TODO` って書いてあるけど、セクションのタイトルと位置と PR の名前から考えてここしかない
+  - https://github.com/facebook/relay/blob/master/packages/relay-runtime/store/RelayModernQueryExecutor.js#L314-L319 : deferred な response を解釈する部分
+  - https://github.com/facebook/relay/blob/master/packages/relay-runtime/store/__tests__/RelayModernEnvironment-ExecuteWithDefer-test.js : Relay runtime store のテストコード
+  - https://github.com/facebook/relay/blob/master/packages/relay-compiler/transforms/__tests__/__snapshots__/DeferStreamTransform-test.js.snap : Relay compiler の defer, stream に対する transform
+  - https://github.com/facebook/relay/pull/3121 : Relay の defer/stream 実装を Spec RFC と合わせる PR
