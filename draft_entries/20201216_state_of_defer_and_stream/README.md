@@ -386,7 +386,7 @@ async function main(enableStream = true) {
 
 これで、クエリ結果が段階的に描画されるように実装することができる。今回は画面側はDOMに直接 `JSON.stringify` した結果を書き込むだけのシンプルな実装に留めた。これをブラウザで実行すると、下図のようになる。
 
-![browser result](browser_example.png)
+![browser result](browser_example.gif)
 
 
 ## `@defer` / `@stream` の使い所
