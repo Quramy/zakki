@@ -144,7 +144,7 @@ query ProductsQuery {
 
 `if` と `label` という input は`@defer` と共通だが、`@stream` は `initialCount` という必須パラメータがあり、ここで指定した個数までは初回の取得結果に含まれる。
 
-## レスポンス形式
+## 1 Request / Multiple Response
 
 GraphQL サーバーは、必ずしも `@defer` と `@stream` を実装する必要はない。実装していない場合、 `@defer` や `@stream` のディレクティブは完全に無視されて、これまで通りすべてのデータの完成を待ってからクライアントに届ければいいだけだ。
 
@@ -272,7 +272,7 @@ main();
 
 ![Streaming Schema Test](schema_test.gif)
 
-## Transport
+## Transport (Server-Side)
 
 GraphQL の spec が規定するのは、あくまでリクエストとレスポンスの形式までであり、それらが実際にどのようなネットワークプロトコルの上でやりとりされるかは GraphQL の仕様の範疇ではない。
 
@@ -320,6 +320,8 @@ if (isAsyncIterable(result)) {
   res.json(result).end();
 }
 ```
+
+## Transport (Client-Side)
 
 クライアント側も `multipart/mixed` なレスポンスについて、[`ReadableStream` を開いて、ペイロードを一つずつ yield するような generator](https://github.com/Quramy/graphql-streaming-example/blob/main/src/frontend/network/multipart-http-client.ts)を準備しておく。
 
@@ -399,12 +401,26 @@ async function main(enableStream = true) {
 
 いずれにせよ、闇雲に使うようなものではなく、フロントエンドとバックエンドのパフォーマンスを可視化する手立てを整えるのが先決。
 
+## ライブラリの状況
+
+主要なGraphQLクライアントライブラリの `@defer` / `@stream` への対応状況は下記のとおり。
+
+- Apollo Client: v3.5 のマイルストンで対応を表明している
+- Relay: Undocumentedながら実装はされている。ただし、現状のSpecと細部が多少ことなる( `hasNext` や `initialCount` など）
+
+サーバー側についても、graphql-rubyや sangria, JuniperなどメジャーなライブラリのissueやPRを覗いてみたが、ポツポツissueが立ち始めている程度なので、実際に広く利用できるようになるのはまだまだ先という印象。
+
+どうしても早く使いたい、というのであれば、以下の構成になるのだろうか。
+
+- サーバー: express-graphql or graphql-helix (Node.js)
+- クライアント: Relay（https://github.com/facebook/relay/pull/3121 の mergeを待ったほうがよい）
+
 ## サマリ
 
 - `@defer` / `@stream` は GraphQL アプリケーションのパフォーマンス改善を行うためのもの
 - 「データ取得がウォーターフォールになってしまう箇所」に適用することで効果が見込める
 - Relay の実装をベースに GraphQL Spec で策定が進んでいてる。2020 年 12 月現在 Stage 2
-- graphql-js には experimental チャネルから利用可能
+- graphql-js には experimental チャネルから利用可能だが、ライブラリの対応状況はまだまだ
 - express-graphal では `Content-Type: multipart/mixed`, `Transfer-Encoding: chunked` を使って HTTP 1.1 トランスポートを実装している
 
 ## `hasNext: true`
@@ -417,24 +433,28 @@ async function main(enableStream = true) {
 
 - History:
   - https://www.youtube.com/watch?v=ViXL0YQnioU&feature=youtu.be&t=9m4s : Lee Bylon の動画(React Europe 2016)
-  - https://www.apollographql.com/blog/introducing-defer-in-apollo-server-f6797c4e9d6e/ : Apollo Server (2018 の blog だが、いまだ実装されていない
-  - https://www.youtube.com/watch?v=WxPtYJRjLL0&feature=youtu.be&t=696 : F8 2019
-  - https://www.youtube.com/watch?v=icv_Pq06aOY : GraphQL Summit 2020 での動画(この RFC の champion)
-  - https://foundation.graphql.org/news/2020/12/08/improving-latency-with-defer-and-stream-directives/
+  - https://www.youtube.com/watch?v=WxPtYJRjLL0&feature=youtu.be&t=696 : Facebook Relayでの活用事例 in F8 2019
+  - https://www.youtube.com/watch?v=icv_Pq06aOY : この RFC の Champion である Rob RichardのによるGraphQL Summit 2020 での講演動画
 - Blog:
-  - https://kazekyo.com/posts/20201005 : 唯一？の日本語解説記事
+  - https://www.apollographql.com/blog/introducing-defer-in-apollo-server-f6797c4e9d6e/ : Apollo Server (2018 の blog だが、いまだ実装されていない
+  - https://foundation.graphql.org/news/2020/12/08/improving-latency-with-defer-and-stream-directives/ : GraphQL Foundationのblog
+  - https://kazekyo.com/posts/20201005 : 日本語解説記事
 - Reference Implementation:
   - https://github.com/graphql/graphql-js/pull/2319
 - Server Implementations:
   - https://github.com/graphql/express-graphql/pull/583 : express-graphql に defer と stream をサポート
-  - https://github.com/graphql/express-graphql/pull/726
-  - https://github.com/contrawork/graphql-helix
+  - https://github.com/graphql/express-graphql/pull/726 : 上記のPRの続き
+  - https://github.com/contrawork/graphql-helix : 軽量なサーバーサイドGraphQLライブラリ。 expressやkoaと組み合わせて利用可能。
 - Apollo Client:
   - https://github.com/apollographql/apollo-client/blob/main/ROADMAP.md#35 で予定されている
 - Relay:
+  - https://github.com/facebook/relay/pull/3121 : Relay の defer/stream 実装を Spec RFC と合わせる PR
   - https://relay.dev/docs/en/experimental/a-guided-tour-of-relay#incremental-data-delivery : ドキュメントはおそらくこれ。思いっきり `TODO` って書いてあるけど、セクションのタイトルと位置と PR の名前から考えてここしかない
   - https://github.com/facebook/relay/blob/master/packages/relay-runtime/store/RelayModernQueryExecutor.js#L314-L319 : deferred な response を解釈する部分
   - https://github.com/facebook/relay/blob/master/packages/relay-runtime/store/__tests__/RelayModernEnvironment-ExecuteWithDefer-test.js : Relay runtime store のテストコード
   - https://github.com/facebook/relay/blob/master/packages/relay-compiler/transforms/__tests__/__snapshots__/DeferStreamTransform-test.js.snap : Relay compiler の defer, stream に対する transform
-  - https://github.com/facebook/relay/pull/3121 : Relay の defer/stream 実装を Spec RFC と合わせる PR
-- [MIME Media Types](https://tools.ietf.org/html/rfc2046)
+- Juniper:
+  - https://github.com/graphql-rust/juniper/issues/734
+- HTTP:
+  - [HTTP 1.1 Transfer Encoding](https://tools.ietf.org/html/rfc7230#section-3.3.1)
+  - [MIME Media Types](https://tools.ietf.org/html/rfc2046)
