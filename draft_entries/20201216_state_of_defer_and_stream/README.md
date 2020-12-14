@@ -2,17 +2,17 @@
 
 これは [GraphQL Advent Calendar 2020](https://qiita.com/advent-calendar/2020/graphql) 16 日目の記事です。
 
-このエントリでは、GraphQL の `@defer` と `@stream` というディレクティブについて書いていく。2020 年末現在、GraphQL spec としては Stage 1（提案段階）であり、参照実装である graphql-js には実装があるものの、今後仕様が変更される可能性がある。
+このエントリでは、GraphQL の `@defer` と `@stream` というディレクティブについて書いていく。2020 年末現在、GraphQL spec としては Stage 2（草案段階）であり、参照実装である graphql-js にも実装が存在している。
 
 ## `@defer` / `@stream` とは何か
 
 `@defer` と `@stream` は共にデータの取得方法を制御するためのディレクティブだ。名前が示すとおり、クエリ全体から特定の箇所の読み込みを遅延させたり、ストリーミングさせることができる。
 
-GraphQL 生みの親である Lee Byron が、[React Europe 2016](https://www.youtube.com/watch?v=ViXL0YQnioU&feature=youtu.be&t=9m4s) 言及していた。
+GraphQL 生みの親である Lee Byron が [React Europe 2016](https://www.youtube.com/watch?v=ViXL0YQnioU&feature=youtu.be&t=9m4s) で言及したのが初出。
 
 ## 解決しようとしている課題
 
-ディレクティブの詳細に入る前に、GraphQL が
+ディレクティブの詳細に入る前に、GraphQL を使ったアプリケーションが直面しやすい性能上の問題について触れておく。
 
 GraphQL の魅力の 1 つは、クライアントが自由にレスポンスの形を指定し、関連するリソースを少ないリクエスト回数で取得できることだ。
 特にコロケーションと組み合わせることで、「画面描画に必要十分なレスポンスに相当するクエリ」を保守性を保ったまま構築できる。
@@ -177,13 +177,13 @@ type AsyncExecutionResult = {
 
 ## graphql-js
 
-GraphQL Spec の参照実装である graphql-js には v15.4.0 で `@defer` と `@stream` が実装されている。ただし、 `npm graphql@v^15.4.0` とするだけでは利用できず、 `experimental-stream-defer` をバージョンに付与してインストールする必要がある。
+GraphQL Spec の参照実装である graphql-js には v15.4.0 で `@defer` と `@stream` が実装されている。ただし、2020 年 12 月現在では `npm graphql@v^15.4.0` とするだけでは利用できず、 `experimental-stream-defer` をバージョンに付与してインストールする必要がある。
 
 ```sh
 npm i graphql@v15.4.0-experimental-stream-defer.1
 ```
 
-現状の実装では、この 2 つのディレクティブが有効であるようなリクエストを受け取った場合、`asyncIterable` なオブジェクトを解決するようになっている。
+現状の実装では、この 2 つのディレクティブが有効であるようなリクエストを受け取った場合、`asyncIterable` なオブジェクトを解決するようになっている。戻り値の型が変わっている、すなわち破壊的変更なため、正式な対応は v16 以降になるのだろうか。
 
 ```ts
 declare function graphql(
@@ -191,16 +191,16 @@ declare function graphql(
 ): Promise<AsyncIterableIterator<any> | ExecutionResult<any, any>>;
 ```
 
-実際に挙動を確認してみよう。
+実際の挙動を確認してみよう。
 
-対象となるスキーマをSDLで表現すると下記となる。スキーマの実装自体はいままでと何ら変わりがないので詳細は割愛する。[興味があるひとはここからどうぞ](https://github.com/Quramy/graphql-streaming-example/blob/main/src/schema/schema.ts)。
+ここでは次の SDL で表現されるスキーマを対象にしてみる。「`specialPrice` という項目の算出は他の項目に比べて時間が掛かる」という状況を想定している。また、 `@stream` の挙動も確認したいので、 `Query.products` をリスト型項目としてある。スキーマの実装自体はさして面白みがないので割愛するが、興味がある人は[サンプルレポジトリのソースコード](https://github.com/Quramy/graphql-streaming-example/blob/main/src/schema/schema.ts)からどうぞ。
 
 ```graphql
 type Product {
   id: ID!
   name: String!
   price: Int!
-  specialPrice: Int
+  specialPrice: Int ## 計算に時間がかかる
 }
 
 type Query {
@@ -208,18 +208,18 @@ type Query {
 }
 ```
 
-次のコードでスキーマに対して、 `graphql` メソッドでクエリを実行する。戻り値が `asyncIterable` な場合は、`for await of` 構文で結果を表示するように切り替えておく。
+上記のスキーマに対して、 `graphql` メソッドで次のクエリを実行する。戻り値が `asyncIterable` な場合は、`for await of` 構文で結果を表示するように切り替えておく。
 
 ```ts
-import { graphql, AsyncExecutionResult, ExecutionPatchResult } from 'graphql';
-import { schema } from './schema';
+import { graphql, AsyncExecutionResult, ExecutionPatchResult } from "graphql";
+import { schema } from "./schema";
 
 function isAsyncIterable(x: any): x is AsyncIterableIterator<any> {
-  return x != null && typeof x === 'object' && x[Symbol.asyncIterator];
+  return x != null && typeof x === "object" && x[Symbol.asyncIterator];
 }
 
 function isPatch(x: AsyncExecutionResult): x is ExecutionPatchResult {
-  return 'path' in x && Array.isArray(x.path);
+  return "path" in x && Array.isArray(x.path);
 }
 
 async function main() {
@@ -236,7 +236,7 @@ async function main() {
         }
       }
     `,
-    schema,
+    schema
   });
   if (isAsyncIterable(result)) {
     for await (const payload of result) {
@@ -254,11 +254,80 @@ async function main() {
 main();
 ```
 
-結果は次のようになる。
+結果は次のようになる。遅延取得がわかりやすいように、 defer, stream を付与している項目については、スキーマの実装側で数百ミリ秒程度の遅延を行うようにしてある。
 
-T.B.D. ascii
+![Streaming Schema Test](schema_test.gif)
 
+## Transport
 
+GraphQL の spec が規定するのは、あくまでリクエストとレスポンスの形式までであり、それらが実際にどのようなネットワークプロトコルの上でやりとりされるかは GraphQL の仕様の範疇ではない。
+
+サーバーから複数のペイロードが push できるもの、というと、選択肢になり得るのは下記あたりだろう。
+
+- HTTP 1.1 の chunked transfer
+- Web Socket
+- Server Sent Event
+- HTTP/3 の server side push
+
+[Spec の champion である robrichard が express-graphql に出している PR](https://github.com/graphql/express-graphql/pull/726) を見ると、まずは `Transfer-Encoding: chunked` + `Content-Type: multipart/mixed` で実現しようとしいる模様。[graphql-helix](https://github.com/contrawork/graphql-helix) もこれにならっている。
+
+`mulripart/mixed` は Email の添付ファイルとかで用いられているやつ（昔の Twitter の user stream API も確か同じやりかたで streaming を実装していたような記憶）。
+
+この投稿を書いている時点では express-graphql に上述の PR726 が merge されていなかったので、自分で `multipart/mixed` を書いてみた（参考: [RFC 2046 MIME: 5.1. Multipart Media Type](https://tools.ietf.org/html/rfc2046#section-5.1)）。
+
+```ts
+const BOUNDARY = "-";
+
+const result = await execute({
+  schema,
+  document,
+  variableValues: variables ?? {}
+});
+if (isAsyncIterable(result)) {
+  res.writeHead(200, {
+    "Content-Type": `multipart/mixed; charset=UTF-8; boundary="${BOUNDARY}"`,
+    "Transfer-Encoding": "chunked"
+  });
+  for await (const payloadObj of result) {
+    const payloadBody = JSON.stringify(payloadObj);
+    // prettier-ignore
+    const multipart = CRLF
+                    + CRLF
+                    + `--${BOUNDARY}` + CRLF
+                    + 'Content-Type: application/json; charset=UTF-8' + CRLF
+                    + `Content-Length: ${payloadBody.length}` + CRLF
+                    + CRLF
+                    + payloadBody;
+    res.write(multipart);
+  }
+  res.write(CRLF + `--${BOUNDARY}--` + CRLF);
+  res.end();
+} else {
+  res.json(result).end();
+}
+```
+
+クライアント側も `multipart/mixed` なレスポンスについて、[`ReadableStream` を開いて、ペイロードを一つずつ yield するような generator](https://github.com/Quramy/graphql-streaming-example/blob/main/src/frontend/network/multipart-http-client.ts)を準備しておく。
+
+このように、クライアントライブラリ側でも、サーバー側の実装に合わせて適切なトランスポートを実装しておく必要がある。自分で `multipart/mixed` のストリーム変換を書くのが面倒であれば、 https://www.npmjs.com/package/meros あたりを利用するのがよさそう。
+
+## `@defer` / `@stream` の使い所
+
+冒頭でも書いたように、この 2 つのディレクティブは性能向上のためのものであり、新しい機能を実装するためのものではない。
+
+とくに、ウォーターフォール（N + 1）が発生してしまう箇所に適用させると効果が高いはず。
+
+バックエンドがモノリシックな RDB の場合は、[GraphQL::Batch](https://github.com/Shopify/graphql-batch)や[DataLoader](https://github.com/graphql/dataloader)あたりを利用すれば N+1 を減らすことができるが、複数のマイクロサービスに跨ってしまうケースについては、一定の効果が見込めるのではないだろうか。
+
+いずれにせよ、闇雲に使うようなものではなく、フロントエンドとバックエンドのパフォーマンスを可視化する手立てを整えるのが先決。
+
+## サマリ
+
+- `@defer` / `@stream` は GraphQL アプリケーションのパフォーマンス改善を行うためのもの
+- 「データ取得がウォーターフォールになってしまう箇所」に適用することで効果が見込める
+- Relay の実装をベースに GraphQL Spec で策定が進んでいてる。2020 年 12 月現在 Stage 2
+- graphql-js には experimental チャネルから利用可能
+- express-graphal では `Content-Type: multipart/mixed`, `Transfer-Encoding: chunked` を使って HTTP 1.1 トランスポートを実装している
 
 ## `hasNext: true`
 
@@ -266,7 +335,7 @@ T.B.D. ascii
 
 今回はアドカレの期日に間に合わせる方が優先だし、そもそもこの投稿は `@defer` についての記事なのだから、書くのが大変な部分は別のペイロードにして届けることにして何の問題があるのだろう。
 
-## References
+## 参考リンク
 
 - History:
   - https://www.youtube.com/watch?v=ViXL0YQnioU&feature=youtu.be&t=9m4s : Lee Bylon の動画(React Europe 2016)
@@ -290,3 +359,4 @@ T.B.D. ascii
   - https://github.com/facebook/relay/blob/master/packages/relay-runtime/store/__tests__/RelayModernEnvironment-ExecuteWithDefer-test.js : Relay runtime store のテストコード
   - https://github.com/facebook/relay/blob/master/packages/relay-compiler/transforms/__tests__/__snapshots__/DeferStreamTransform-test.js.snap : Relay compiler の defer, stream に対する transform
   - https://github.com/facebook/relay/pull/3121 : Relay の defer/stream 実装を Spec RFC と合わせる PR
+- [MIME Media Types](https://tools.ietf.org/html/rfc2046)
