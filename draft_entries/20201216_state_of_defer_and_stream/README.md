@@ -2,13 +2,17 @@
 
 これは [GraphQL Advent Calendar 2020](https://qiita.com/advent-calendar/2020/graphql) 16 日目の記事です。
 
-このエントリでは、GraphQL の `@defer` と `@stream` というディレクティブについて書いていく。2020 年末現在、GraphQL spec としては Stage 2（草案段階）であり、参照実装である graphql-js にも実装が存在している。
+このエントリでは、GraphQL の `@defer` と `@stream` というディレクティブについて書いていく。色々書いていたら割と長くなってしまったが、内容は下記のとおり。
+
+- このディレクティブの登場背景
+- ディレクティブの Spec
+- 実装
 
 ## `@defer` / `@stream` とは何か
 
-`@defer` と `@stream` は共にデータの取得方法を制御するためのディレクティブだ。名前が示すとおり、クエリ全体から特定の箇所の読み込みを遅延させたり、ストリーミングさせることができる。
+`@defer` と `@stream` は共にデータの取得方法を制御するためのディレクティブだ。名前が示すとおり、クエリ全体から特定の箇所の読み込みを遅延させたり、ストリーミングさせることができる。2020 年末現在、GraphQL spec としては Stage 2（草案段階）であり、参照実装である graphql-js にも実装が存在している。
 
-GraphQL 生みの親である Lee Byron が [React Europe 2016](https://www.youtube.com/watch?v=ViXL0YQnioU&feature=youtu.be&t=9m4s) で言及したのが初出。
+GraphQL 生みの親である Lee Byron が [React Europe 2016](https://www.youtube.com/watch?v=ViXL0YQnioU&feature=youtu.be&t=9m4s) で言及したのが初出（のはず）。その後、Facebook Relay が独自にカスタムディレクティブとして独自実装していたものをベースとして、GraphQL Spec での仕様策定が進んでいる（ただし Spec の Champion は Relay とは別のところの人）。
 
 ## 解決しようとしている課題
 
@@ -279,7 +283,7 @@ GraphQL の spec が規定するのは、あくまでリクエストとレスポ
 - Server Sent Event
 - HTTP/3 の server side push
 
-[Spec の champion である robrichard が express-graphql に出している PR](https://github.com/graphql/express-graphql/pull/726) を見ると、まずは `Transfer-Encoding: chunked` + `Content-Type: multipart/mixed` で実現しようとしいる模様。[graphql-helix](https://github.com/contrawork/graphql-helix) もこれにならっている。
+[Spec の Champion である robrichard が express-graphql に出している PR](https://github.com/graphql/express-graphql/pull/726) を見ると、まずは `Transfer-Encoding: chunked` + `Content-Type: multipart/mixed` で実現しようとしいる模様。[graphql-helix](https://github.com/contrawork/graphql-helix) もこれにならっている。
 
 `mulripart/mixed` は Email の添付ファイルとかで用いられているやつ（昔の Twitter の user stream API も確か同じやりかたで streaming を実装していたような記憶）。
 
@@ -320,6 +324,70 @@ if (isAsyncIterable(result)) {
 クライアント側も `multipart/mixed` なレスポンスについて、[`ReadableStream` を開いて、ペイロードを一つずつ yield するような generator](https://github.com/Quramy/graphql-streaming-example/blob/main/src/frontend/network/multipart-http-client.ts)を準備しておく。
 
 このように、クライアントライブラリ側でも、サーバー側の実装に合わせて適切なトランスポートを実装しておく必要がある。自分で `multipart/mixed` のストリーム変換を書くのが面倒であれば、 https://www.npmjs.com/package/meros あたりを利用するのがよさそう。
+
+トランスポートが出来てしまえば、もはや `grahpql-js` をそのまま実行していたときと変わらない。サンプルの仕上げとして、最後に `patchData` という関数を用意し、generateされるペイロードを単一のクエリ結果に統合するようにする。
+
+```ts
+type Path = readonly (string | number)[];
+
+function patchData(base: any, path: Path, patch: any) {
+  if (path.length === 0) return base;
+  let parent = base;
+  const fragments = path.slice(0, path.length - 1);
+  const lastIndex = path[path.length - 1]!;
+  for (const fragment of fragments) {
+    parent = parent[fragment];
+  }
+  const target = parent[lastIndex];
+  parent[lastIndex] = { ...target, ...patch };
+  return base;
+}
+
+async function* graphql({ query, variables }: { query: string; variables?: any }) {
+  const client = new HttpGraphQLClient({ url: '/graphql'});
+  const result = await client.graphql({ query, variables });
+  if (isAsyncIterable(result)) {
+    let data: any = {};
+    for await (const payload of result) {
+      console.log(payload);
+      if (!isPatch(payload)) {
+        data = payload.data;
+      } else {
+        data = patchData(data, payload.path!, payload.data);
+      }
+      yield data;
+    }
+  } else {
+    console.log(result);
+    yield result;
+  }
+}
+
+async function main(enableStream = true) {
+  document.querySelector('#out > pre')?.remove();
+  const query = `
+    fragment ProductDetail on Product {
+      specialPrice
+    }
+    query ProductsQuery($enableStream: Boolean!) {
+      products(first: 4) @stream(initialCount: 1, if: $enableStream) {
+        id
+        name
+        price
+        ...ProductDetail @defer(if: $enableStream)
+      }
+    }
+  `;
+  for await (const queryResult of graphql({ query, variables: { enableStream } })) {
+    render(queryResult);
+  }
+}
+```
+
+これで、クエリ結果が段階的に描画されるように実装することができる。今回は画面側はDOMに直接 `JSON.stringify` した結果を書き込むだけのシンプルな実装に留めた。これをブラウザで実行すると、下図のようになる。
+
+![browser result](browser_example.png)
+
 
 ## `@defer` / `@stream` の使い所
 
