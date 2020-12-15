@@ -270,7 +270,7 @@ main();
 
 結果は次のようになる。遅延取得がわかりやすいように、 defer, stream を付与している項目については、スキーマの実装側で数百ミリ秒程度の遅延を行うようにしてある。
 
-[![asciicast](https://asciinema.org/a/379210.svg?t=14s)](https://asciinema.org/a/379210)
+[![asciicast](https://asciinema.org/a/379210.svg?t=14)](https://asciinema.org/a/379210)
 
 `@defer` / `@stream` については、この「1 リクエストに対して、複数レスポンスが返ってくる（かもしれない）」という挙動を押さえておけば問題ない。ここから先の話なんて言ってしまえばおまけみたいなものだ。
 
