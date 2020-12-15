@@ -6,7 +6,7 @@
 
 - このディレクティブの登場背景
 - ディレクティブの Spec
-- 実装
+- graphql-js を用いた実装
 
 ## `@defer` / `@stream` とは何か
 
@@ -25,20 +25,20 @@ GraphQL の魅力の 1 つは、クライアントが自由にレスポンスの
 
 ![Colocated Query](colocated_query.png)
 
-ここで厄介なのが「画面描画に必要十分な」という表現だ。クライアントは、GraphQL クエリの結果が到着しないと画面の描画を行えない。
+ここで注意が必要となるのが「画面描画に必要十分な」という表現だ。クライアントは、GraphQL クエリの結果が到着しないと画面の描画を行えない。
 
 例えば次のような例を考えて欲しい。
 
 EC サイトを運用しようとしてるとしよう。次のような商品詳細ページを考えてみて欲しい。
 
-- 商品名や商品画像、定価といった基本的な属性の他に、商品の特別価格を表示する必要がある。特別価格の決定要因は展開中のキャンペーンやユーザーが保持しているクーポンなどがある（ぶっちゃけると計算が結構大変で、仕様変更のたびにサーバーサイドエンジニアが泣いている）
+- 商品名や商品画像、定価といった基本的な属性の他に、商品の特別価格を表示する必要がある。特別価格の決定要因には展開中のキャンペーンやユーザーが保持しているクーポンなどがあり、計算コストが高い。
 
 ```graphql
 query ProductDetailQuery {
   product(id: 100) {
     id
     name
-    imageUrl
+    imageURL
     specialPrice # 計算が大変
   }
 }
@@ -46,7 +46,7 @@ query ProductDetailQuery {
 
 ![Sample Product Detail Spec](product_detail_spec.png)
 
-特別価格、`specialPrice` の取得を待っている間、ユーザーには商品に関する情報が一切表示されないことになってしまう。ローディングが終わらないので、別の画面に行ってしまったら最悪だ。折角ユーザーのために値引きしていても、コンバージョンレートを下げることになってしまう。
+素朴に実装すると、特別価格（`specialPrice`）の取得を待っている間、ユーザーには商品に関する情報が一切表示されない。ローディングが終わらないので、別の画面に行ってしまったら最悪だ。折角ユーザーのために値引きしていても、コンバージョンレートを下げることになってしまう。
 
 ![waterfall](waterfall.png)
 
@@ -270,11 +270,13 @@ main();
 
 結果は次のようになる。遅延取得がわかりやすいように、 defer, stream を付与している項目については、スキーマの実装側で数百ミリ秒程度の遅延を行うようにしてある。
 
-![Streaming Schema Test](schema_test.gif)
+[![asciicast](https://asciinema.org/a/379210.svg?t=14s)](https://asciinema.org/a/379210)
+
+`@defer` / `@stream` については、この「1 リクエストに対して、複数レスポンスが返ってくる（かもしれない）」という挙動を押さえておけば問題ない。ここから先の話なんて言ってしまえばおまけみたいなものだ。
 
 ## Transport (Server-Side)
 
-GraphQL の spec が規定するのは、あくまでリクエストとレスポンスの形式までであり、それらが実際にどのようなネットワークプロトコルの上でやりとりされるかは GraphQL の仕様の範疇ではない。
+Spec が規定するのは、あくまでリクエストとレスポンスの形式までであり、それらが実際にどのようなネットワークプロトコルの上でやりとりされるかは GraphQL の仕様の範疇ではない。
 
 サーバーから複数のペイロードが push できるもの、というと、選択肢になり得るのは下記あたりだろう。
 
@@ -283,11 +285,11 @@ GraphQL の spec が規定するのは、あくまでリクエストとレスポ
 - Server Sent Event
 - HTTP/3 の server side push
 
-[Spec の Champion である robrichard が express-graphql に出している PR](https://github.com/graphql/express-graphql/pull/726) を見ると、まずは `Transfer-Encoding: chunked` + `Content-Type: multipart/mixed` で実現しようとしいる模様。[graphql-helix](https://github.com/contrawork/graphql-helix) もこれにならっている。
+[Spec の Champion である robrichard が express-graphql に出している PR](https://github.com/graphql/express-graphql/pull/726) を見ると、まずは HTTP 1.1 の`Transfer-Encoding: chunked` + `Content-Type: multipart/mixed` で実現しようとしいる模様。[graphql-helix](https://github.com/contrawork/graphql-helix) もこれにならっている。
 
 `mulripart/mixed` は Email の添付ファイルとかで用いられているやつ（昔の Twitter の user stream API も確か同じやりかたで streaming を実装していたような記憶）。
 
-この投稿を書いている時点では express-graphql に上述の PR726 が merge されていなかったので、自分で `multipart/mixed` を書いてみた（参考: [RFC 2046 MIME: 5.1. Multipart Media Type](https://tools.ietf.org/html/rfc2046#section-5.1)）。
+この投稿を書いている時点では express-graphql に上述の PR 726 が merge されていなかったので、自分で `multipart/mixed` を書いてみた（参考: [RFC 2046 MIME: 5.1. Multipart Media Type](https://tools.ietf.org/html/rfc2046#section-5.1)）。
 
 ```ts
 const BOUNDARY = "-";
@@ -325,9 +327,9 @@ if (isAsyncIterable(result)) {
 
 クライアント側も `multipart/mixed` なレスポンスについて、[`ReadableStream` を開いて、ペイロードを一つずつ yield するような generator](https://github.com/Quramy/graphql-streaming-example/blob/main/src/frontend/network/multipart-http-client.ts)を準備しておく。
 
-このように、クライアントライブラリ側でも、サーバー側の実装に合わせて適切なトランスポートを実装しておく必要がある。自分で `multipart/mixed` のストリーム変換を書くのが面倒であれば、 https://www.npmjs.com/package/meros あたりを利用するのがよさそう。
+クライアントライブラリ側でも、サーバー側の実装に合わせて適切なトランスポートを実装しておく必要があるということだ。自分で `multipart/mixed` のストリーム変換を書くのが面倒であれば、 https://www.npmjs.com/package/meros あたりを利用するのがよさそう。
 
-トランスポートが出来てしまえば、もはや `grahpql-js` をそのまま実行していたときと変わらない。サンプルの仕上げとして、最後に `patchData` という関数を用意し、generateされるペイロードを単一のクエリ結果に統合するようにする。
+トランスポートが出来てしまえば、もはや `grahpql-js` をそのまま実行していたときと変わらない。サンプルの仕上げとして、最後に `patchData` という関数を用意し、generate されるペイロードを単一のクエリ結果に統合するようにする。
 
 ```ts
 type Path = readonly (string | number)[];
@@ -345,8 +347,14 @@ function patchData(base: any, path: Path, patch: any) {
   return base;
 }
 
-async function* graphql({ query, variables }: { query: string; variables?: any }) {
-  const client = new HttpGraphQLClient({ url: '/graphql'});
+async function* graphql({
+  query,
+  variables
+}: {
+  query: string;
+  variables?: any;
+}) {
+  const client = new HttpGraphQLClient({ url: "/graphql" });
   const result = await client.graphql({ query, variables });
   if (isAsyncIterable(result)) {
     let data: any = {};
@@ -366,7 +374,7 @@ async function* graphql({ query, variables }: { query: string; variables?: any }
 }
 
 async function main(enableStream = true) {
-  document.querySelector('#out > pre')?.remove();
+  document.querySelector("#out > pre")?.remove();
   const query = `
     fragment ProductDetail on Product {
       specialPrice
@@ -380,20 +388,22 @@ async function main(enableStream = true) {
       }
     }
   `;
-  for await (const queryResult of graphql({ query, variables: { enableStream } })) {
+  for await (const queryResult of graphql({
+    query,
+    variables: { enableStream }
+  })) {
     render(queryResult);
   }
 }
 ```
 
-これで、クエリ結果が段階的に描画されるように実装することができる。今回は画面側はDOMに直接 `JSON.stringify` した結果を書き込むだけのシンプルな実装に留めた。これをブラウザで実行すると、下図のようになる。
+これで、クエリ結果が段階的に描画されるように実装することができる。今回は画面側は DOM に直接 `JSON.stringify` した結果を書き込むだけのシンプルな実装に留めた。これをブラウザで実行すると、下図のようになる。
 
 ![browser result](browser_example.gif)
 
-
 ## `@defer` / `@stream` の使い所
 
-冒頭でも書いたように、この 2 つのディレクティブは性能向上のためのものであり、新しい機能を実装するためのものではない。
+この 2 つのディレクティブは、何か新しい機能を実装するためのものというよりは、性能向上のためのものだ。
 
 とくに、ウォーターフォール（N + 1）が発生してしまう箇所に適用させると効果が高いはず。
 
@@ -403,17 +413,17 @@ async function main(enableStream = true) {
 
 ## ライブラリの状況
 
-主要なGraphQLクライアントライブラリの `@defer` / `@stream` への対応状況は下記のとおり。
+主要な GraphQL クライアントライブラリの `@defer` / `@stream` への対応状況は下記のとおり。
 
 - Apollo Client: v3.5 のマイルストンで対応を表明している
-- Relay: Undocumentedながら実装はされている。ただし、現状のSpecと細部が多少ことなる( `hasNext` や `initialCount` など）
+- Relay: Undocumented ながら実装はされている。ただし、現状の Spec と細部が多少ことなる( `hasNext` や `initialCount` など）
 
-サーバー側についても、graphql-rubyや sangria, JuniperなどメジャーなライブラリのissueやPRを覗いてみたが、ポツポツissueが立ち始めている程度なので、実際に広く利用できるようになるのはまだまだ先という印象。
+サーバー側についても、graphql-ruby や sangria, Juniper などメジャーなライブラリの issue や PR を覗いてみたが、ポツポツ issue が立ち始めている程度なので、実際に広く利用できるようになるのはまだまだ先という印象。
 
 どうしても早く使いたい、というのであれば、以下の構成になるのだろうか。
 
 - サーバー: express-graphql or graphql-helix (Node.js)
-- クライアント: Relay（https://github.com/facebook/relay/pull/3121 の mergeを待ったほうがよい）
+- クライアント: Relay（https://github.com/facebook/relay/pull/3121 の merge を待ったほうがよい）
 
 ## サマリ
 
@@ -422,6 +432,7 @@ async function main(enableStream = true) {
 - Relay の実装をベースに GraphQL Spec で策定が進んでいてる。2020 年 12 月現在 Stage 2
 - graphql-js には experimental チャネルから利用可能だが、ライブラリの対応状況はまだまだ
 - express-graphal では `Content-Type: multipart/mixed`, `Transfer-Encoding: chunked` を使って HTTP 1.1 トランスポートを実装している
+- サンプルの実装は https://github.com/Quramy/graphql-streaming-example に置いてある
 
 ## `hasNext: true`
 
@@ -433,18 +444,18 @@ async function main(enableStream = true) {
 
 - History:
   - https://www.youtube.com/watch?v=ViXL0YQnioU&feature=youtu.be&t=9m4s : Lee Bylon の動画(React Europe 2016)
-  - https://www.youtube.com/watch?v=WxPtYJRjLL0&feature=youtu.be&t=696 : Facebook Relayでの活用事例 in F8 2019
-  - https://www.youtube.com/watch?v=icv_Pq06aOY : この RFC の Champion である Rob RichardのによるGraphQL Summit 2020 での講演動画
+  - https://www.youtube.com/watch?v=WxPtYJRjLL0&feature=youtu.be&t=696 : Facebook Relay での活用事例 in F8 2019
+  - https://www.youtube.com/watch?v=icv_Pq06aOY : この RFC の Champion である Rob Richard のによる GraphQL Summit 2020 での講演動画
 - Blog:
   - https://www.apollographql.com/blog/introducing-defer-in-apollo-server-f6797c4e9d6e/ : Apollo Server (2018 の blog だが、いまだ実装されていない
-  - https://foundation.graphql.org/news/2020/12/08/improving-latency-with-defer-and-stream-directives/ : GraphQL Foundationのblog
+  - https://foundation.graphql.org/news/2020/12/08/improving-latency-with-defer-and-stream-directives/ : GraphQL Foundation の blog
   - https://kazekyo.com/posts/20201005 : 日本語解説記事
 - Reference Implementation:
   - https://github.com/graphql/graphql-js/pull/2319
 - Server Implementations:
   - https://github.com/graphql/express-graphql/pull/583 : express-graphql に defer と stream をサポート
-  - https://github.com/graphql/express-graphql/pull/726 : 上記のPRの続き
-  - https://github.com/contrawork/graphql-helix : 軽量なサーバーサイドGraphQLライブラリ。 expressやkoaと組み合わせて利用可能。
+  - https://github.com/graphql/express-graphql/pull/726 : 上記の PR の続き
+  - https://github.com/contrawork/graphql-helix : 軽量なサーバーサイド GraphQL ライブラリ。 express や koa と組み合わせて利用可能。
 - Apollo Client:
   - https://github.com/apollographql/apollo-client/blob/main/ROADMAP.md#35 で予定されている
 - Relay:
@@ -455,6 +466,6 @@ async function main(enableStream = true) {
   - https://github.com/facebook/relay/blob/master/packages/relay-compiler/transforms/__tests__/__snapshots__/DeferStreamTransform-test.js.snap : Relay compiler の defer, stream に対する transform
 - Juniper:
   - https://github.com/graphql-rust/juniper/issues/734
-- HTTP:
+- RFC:
   - [HTTP 1.1 Transfer Encoding](https://tools.ietf.org/html/rfc7230#section-3.3.1)
   - [MIME Media Types](https://tools.ietf.org/html/rfc2046)
