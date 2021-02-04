@@ -262,8 +262,11 @@ partial hydration: SSR した結果に対して、Client 部分のアプリケ�
 :memo: React における SSR, Progressive hydration, Suspense まわりの整理がよく分かんない。。。[Dan Abramov の tweet](https://twitter.com/dan_abramov/status/1190380093274828803) で "selective hydration" という単語も登場したりする。
 
 > One feature that's already enabled (and available in the Concurrent Mode preview) is Progressive Hydration. It means that we can start hydrating the server-rendered HTML without synchronously blocking the main thread. This improves responsiveness.
+
 > Another feature that we haven't documented (but that's technically available in the build we published) is Selective Hydration. We can prioritize hydrating a subtree that user interacted with, instead of waiting for the whole app to finish hydrating. It's very noticeable.
+
 > Yet another aspect we haven't documented is how Suspense interplays with SSR. In this preview, React already special `<!--->` comments in HTML that demarcate Suspense loading states. React will hydrate the rest of the app without waiting for them, and be able to stay interactive.
+
 > Progressive Hydration with Suspense means we can stream HTML, code, and data into the page, and make parts of it interactive **as it streams in**, instead of waiting for the whole thing to finish. `<Suspense>` boundaries serve as natural points to "split off" the next chunk.
 
 ## 39. Have we optimized the strategy for React/SPA?
