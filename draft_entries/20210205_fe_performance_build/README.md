@@ -38,13 +38,13 @@ enhanced(モダンブラウザ): トランスパイル無し（もしくは down
 - Tree Shaking: Code Elimination のテクニック
 - Scope Hoisting: ある種の inline 展開でコード量を削減するテクニック
 
-Note: webpack 4 時点ではどちらも production mode ではデフォルトで有効化されているので、あんまり気にする必要ない
+:memo: webpack 4 時点ではどちらも production mode ではデフォルトで有効化されているので、あんまり気にする必要ない
 
 ### Code Splitting
 
 SPA の場合、bootstrap のスピードを上げることは重要。FW 毎に色々なテクニックがあるから、それを参照すべし。
 
-Note: Angular のテクニックとして紹介されているのは、https://github.com/mgechev/angular-performance-checklist/blob/master/README.ja-JP.md#%E3%83%AA%E3%82%BD%E3%83%BC%E3%82%B9%E3%81%AE%E9%81%85%E5%BB%B6%E8%AA%AD%E3%81%BF%E8%BE%BC%E3%81%BF のあたりなど。
+:memo: Angular のテクニックとして紹介されているのは、https://github.com/mgechev/angular-performance-checklist/blob/master/README.ja-JP.md#%E3%83%AA%E3%82%BD%E3%83%BC%E3%82%B9%E3%81%AE%E9%81%85%E5%BB%B6%E8%AA%AD%E3%81%BF%E8%BE%BC%E3%81%BF のあたりなど。
 
 ## 31. Can we improve Webpack's output?
 
@@ -56,7 +56,7 @@ Tree Shaking で `import` / `export` は削られるが、必ずしもその定�
 
 特に関数呼び出しが絡んでいる場合、思ったほど削減されてない可能性がある。そういうケースでは、関数呼び出しに Terser 向けの Magic Comment `/* #__PURE__ */` を付与することで、デッドコードになる場合に正しく bundle からと取り除かれるようになる。
 
-Note: [webpack 側の説明](https://webpack.js.org/guides/tree-shaking/) をちゃんと読むのが一番わかりやすい。
+:memo: [webpack 側の説明](https://webpack.js.org/guides/tree-shaking/) をちゃんと読むのが一番わかりやすい。以降はその簡単な説明。
 
 次のコードにおいて、関数 `ComponentB` は import されてないため、webpack は Tree Shaking にて「コイツはどこからも import されていない export だよ」というマークをつける。
 
@@ -129,7 +129,7 @@ v80 以降の Chrome だと、worker の js ファイルを module 読み込み�
 const worker = new Worker(url, { type: "module" });
 ```
 
-Note:
+:memo:
 「実際にどれくらい効果があるの？」的な話につながるリソースは見当たらず。 [CDS 2019 の PROXX](https://web.dev/off-main-thread/) が 参考として挙げられていたけど、アレを一般的なユースケースというには疑問符が付くところ。
 
 一般的に、Worker 化に向くか向かないかとして、書きの基準がある。
@@ -137,7 +137,7 @@ Note:
 - Worker に向いている処理: 実行に時間がかかるコードブロック, メッセージの入出力データ量が小さい, request/response モデルに従っている
 - Worker に向いていない処理: DOM に依存する, 遅延が許されない処理,
 
-Note: そもそも Worker からは DOM 扱えないからそりゃそうだろ、って気がする
+:memo: そもそも Worker からは DOM 扱えないからそりゃそうだろ、って気がする
 
 ## 33. Can you offload "hot paths" to WebAssembly?
 
@@ -147,7 +147,7 @@ WebAssembly は JS を置き換えるためのものではない。
 
 ほぼすべてのブラウザで WASM を動かすことができる、また JS -> WASM 呼び出しのオーバーヘッドも改善されている。
 
-Note: この節には一般的なことしか書いてなかったので、[Front-End Study #2 の chikoski さん動画](https://youtu.be/Ga8P_buwXnw?t=3951) とか観た方がよいかな。
+:memo: この節には一般的なことしか書いてなかったので、[Front-End Study #2 の chikoski さん動画](https://youtu.be/Ga8P_buwXnw?t=3951) とか観た方がよいかな。
 
 ## 34. Do we serve legacy code only to legacy browsers?
 
@@ -159,7 +159,7 @@ https://web.dev/publish-modern-javascript/ にモダン・レガシーな JavaSc
 
 https://estimator.dev/ に自分のドメインを入力すれば、どれくらいの削減効果があるのかを事前に評価できる。
 
-Note: "29. Do you use native JavaScript modules in production?" の節と言ってること一緒なような。。。
+:memo: "29. Do you use native JavaScript modules in production?" の節と言ってること一緒なような。。。
 
 ## 35. Identify and rewrite legacy code with incremental decoupling.
 
@@ -171,7 +171,7 @@ Note: "29. Do you use native JavaScript modules in production?" の節と言っ�
 レガシーコードが呼び出されている頻度を定期的にモニタリングし、それが上昇傾向に無いことを確認すべし。
 レガシーなライブラリを呼び出すコードが PR されたら、警告するようにするとよい。
 
-Note: 下図は、紹介されていた [GitHub が jQuery を駆逐する過程](https://github.blog/2018-09-06-removing-jquery-from-github-frontend/) で計測されていた jQuery の呼び出し総数。
+:memo: 下図は、紹介されていた [GitHub が jQuery を駆逐する過程](https://github.blog/2018-09-06-removing-jquery-from-github-frontend/) で計測されていた jQuery の呼び出し総数。
 
 ![](https://github.blog/wp-content/uploads/2018/09/jquery-usage.png)
 
@@ -195,9 +195,9 @@ Chrome や Puppeteer, Playwright を使って JS / CSS Coverage を取得して�
 
 これを繰り返していけば、Initial Load で取得する js のサイズを削減することが可能。
 
-Note: 紹介されている "Puppeteer Recorder" は Chrome Extension としてのもの。 https://github.com/puppeteer/recorder とは似ているけど別物。
+:memo: 紹介されている "Puppeteer Recorder" は Chrome Extension としてのもの。 https://github.com/puppeteer/recorder とは似ているけど別物。
 
-Note: Puppeteer での JS Coverage、[Transpile が絡むと罠がある](https://quramy.medium.com/puppeteer-%E3%81%A8-coverage-%E3%81%AE%E8%A9%B1-dcaee81d6f52)ので、個人的には懐疑的な気持ちになる。
+:memo: Puppeteer での JS Coverage、[Transpile が絡むと罠がある](https://quramy.medium.com/puppeteer-%E3%81%A8-coverage-%E3%81%AE%E8%A9%B1-dcaee81d6f52)ので、個人的には懐疑的な気持ちになる。
 
 ### CSS
 
@@ -225,16 +225,16 @@ https://github.com/GoogleChromeLabs/webpack-libs-optimizations には、色々�
 - https://github.com/danvk/source-map-explorer
 - etc
 
-Note: source-map-explorer は webpack に限らず、bundle.js と sourcemap があれば一瞬で可視化できるのでオススメ
+:memo: source-map-explorer は webpack に限らず、bundle.js と sourcemap があれば一瞬で可視化できるのでオススメ
 
 別の話題として、利用しているフレームワークを build 時に compile して最小限の機能だけに削ぎ落とすという技もある。
 
 - Svelte はアプリケーションの build 時に、必要な DOM オペレーションを行うような vanilla JS のコードを出力する
 - React の場合、 https://github.com/sokra/rawact という Babel plugin が react-dom に対して似たようなことを行う（らしい）
 
-Note: ここに記載は無いが、Angular が Ivy でやってることもこれに近い。Ivy が出力する view factory 相当のコードは、renderer に対して徹底的に tree shakable になるように再設計されていた。
+:memo: ここに記載は無いが、Angular が Ivy でやってることもこれに近い。Ivy が出力する view factory 相当のコードは、renderer に対して徹底的に tree shakable になるように再設計されていた。
 
-Note: Apollo 界隈で頻出する、graphql-tag も似たような話がある。このコード、GraphQL 本体の parser を握ってしまっているが、ビルド時にクエリを AST に展開しておくことで、parser を削減することができる。
+:memo: Apollo 界隈で頻出する、graphql-tag も似たような話がある。このコード、GraphQL 本体の parser を握ってしまっているが、ビルド時にクエリを AST に展開しておくことで、parser を削減することができる。
 
 ```js
 import gql from "graphql-tag"; // コイツ
@@ -257,9 +257,9 @@ partial hydration: SSR した結果に対して、Client 部分のアプリケ�
 - [11y + preact の例](https://markus.oberlehner.net/blog/building-partially-hydrated-progressively-enhanced-static-websites-with-isomorphic-preact-and-eleventy/)
 - [Vue.js での Lazy hydration](https://markus.oberlehner.net/blog/how-to-drastically-reduce-estimated-input-latency-and-time-to-interactive-of-ssr-vue-applications/)
 
-Note: "Progressive Hydration" と term としては同義？
+:memo: "Progressive Hydration" と term としては同義？
 
-Note: React における SSR, Progressive hydration, Suspense まわりの整理がよく分かんない。。。[Dan Abramov の tweet](https://twitter.com/dan_abramov/status/1190380093274828803) で "selective hydration" という単語も登場したりする。
+:memo: React における SSR, Progressive hydration, Suspense まわりの整理がよく分かんない。。。[Dan Abramov の tweet](https://twitter.com/dan_abramov/status/1190380093274828803) で "selective hydration" という単語も登場したりする。
 
 > One feature that's already enabled (and available in the Concurrent Mode preview) is Progressive Hydration. It means that we can start hydrating the server-rendered HTML without synchronously blocking the main thread. This improves responsiveness.
 > Another feature that we haven't documented (but that's technically available in the build we published) is Selective Hydration. We can prioritize hydrating a subtree that user interacted with, instead of waiting for the whole app to finish hydrating. It's very noticeable.
@@ -278,7 +278,7 @@ Note: React における SSR, Progressive hydration, Suspense まわりの整理
 - Stateful Component を使うのであれば、それが必要になるまで hydration を遅延させるようにしろ
 - `requestIdleCallback` で Main Thread の邪魔をしないように hydration をスケジュールしろ
 
-Note: パフォーマンスのためとはいえ、そこまで過激なことするのか？という気持ちになった
+:memo: パフォーマンスのためとはいえ、そこまで過激なことするのか？という気持ちになった
 
 上記以外にも、React でアプリケーションを組む上でのパフォーマンス関連記事のリンクが紹介されている。
 
@@ -286,7 +286,7 @@ Note: パフォーマンスのためとはいえ、そこまで過激なこと�
 - [Next.js の bundle size を削減するテクニック](https://medium.com/ne-digital/how-to-reduce-next-js-bundle-size-68f7ac70c375)
 - etc,,,
 
-Note: CSS in JS のやつ以外は個別詳細記事まで読めてない。 Zero Runtime Cost な CSS in JS ライブラリの検討が推奨されていた。
+:memo: CSS in JS のやつ以外は個別詳細記事まで読めてない。 Zero Runtime Cost な CSS in JS ライブラリの検討が推奨されていた。
 
 ## 40. Are you using predictive prefetching for JavaScript chunks?
 
@@ -298,7 +298,7 @@ enhanced なモジュールを lazy load すると、「実際に必要になっ
 
 Google Analytics のデータを元に、「ユーザーが次に訪問する可能性のある高いページはどこか？」を推定して、そのページに対応する route bundle を prefetch する設定を行うツール。
 
-Note: [Minko Gechev の blog](https://blog.mgechev.com/2018/03/18/machine-learning-data-driven-bundling-webpack-javascript-markov-chain-angular-react/) に Guess.js の仕組みが詳細に解説されていて面白い。マルコフ過程をモデルとして、尤度を決定するようになっているため、「ページ A を閲覧した人がページ B に行く割合」さえわかれば十分。GA は Guess.js で取りうるデータ入力元の 1 パターンでしかないので、Adobe Analytics などの別の Data Source であっても、以下のように遷移の重みを正規化したデータを与えれば Guess.js の webpack plugin に食わせることができる。
+:memo: [Minko Gechev の blog](https://blog.mgechev.com/2018/03/18/machine-learning-data-driven-bundling-webpack-javascript-markov-chain-angular-react/) に Guess.js の仕組みが詳細に解説されていて面白い。マルコフ過程をモデルとして、尤度を決定するようになっているため、「ページ A を閲覧した人がページ B に行く割合」さえわかれば十分。GA は Guess.js で取りうるデータ入力元の 1 パターンでしかないので、Adobe Analytics などの別の Data Source であっても、以下のように遷移の重みを正規化したデータを与えれば Guess.js の webpack plugin に食わせることができる。
 
 ```js
 [
@@ -309,7 +309,7 @@ Note: [Minko Gechev の blog](https://blog.mgechev.com/2018/03/18/machine-learni
 ];
 ```
 
-Note: より進んだ内容として、Guess.js の webpack plugin は、ビルド時点で尤度が固定されてしまうが、GTM などを使って、計測・計測データの学習・学習結果から推論された `<link rel="prefetch">` の埋め込みを行うという話もあったりする。 https://iihnordic.com/blog/machine-learning-meets-the-cloud-intelligent-prefetching/
+:memo: より進んだ内容として、Guess.js の webpack plugin は、ビルド時点で尤度が固定されてしまうが、GTM などを使って、計測・計測データの学習・学習結果から推論された `<link rel="prefetch">` の埋め込みを行うという話もあったりする。 https://iihnordic.com/blog/machine-learning-meets-the-cloud-intelligent-prefetching/
 
 ### もう少しライトなツール達
 
@@ -330,19 +330,19 @@ Note: より進んだ内容として、Guess.js の webpack plugin は、ビル�
 
 https://github.com/ryanmcdermott/clean-code-javascript
 
-Note: これ、パフォーマンスと関係ある？良いことが色々書いてあるのは否定しないけど、この節と関係の無い内容が多すぎる。
+:memo: これ、パフォーマンスと関係ある？良いことが色々書いてあるのは否定しないけど、この節と関係の無い内容が多すぎる。
 
 ### Compress data from JavaScript with CompressionSteram API
 
 https://wicg.github.io/compression/
 
-Note: Node.js で言うところの `zlib.createGzip()` 的なやつ。要するに API 通信で送信前に gzip してから送れば高速に upload できる、という話。
+:memo: Node.js で言うところの `zlib.createGzip()` 的なやつ。要するに API 通信で送信前に gzip してから送れば高速に upload できる、という話。
 
 ### Detached window memory leaks
 
 `window.open` したときに、親 window に子の参照が残り、結果として子 window を閉じても GC に memory が回収されないパターン。
 
-Note: 以下は https://web.dev/detached-window-memory-leaks/ の抜粋。
+:memo: 以下は https://web.dev/detached-window-memory-leaks/ の抜粋。
 
 ```js
 /* parent.js */
@@ -370,7 +370,7 @@ Memory Leak の解析に使える Debug テクニックに、DevTools で以下�
 queryObject(Promise);
 ```
 
-Note: コレ知らなかった。。
+:memo: コレ知らなかった。。
 
 ### Reexports are bad for loading and runtime performance
 
@@ -385,13 +385,13 @@ export { Button } from './button';
 export { Icon } from './icon;
 ```
 
-Note: 元スレでは Scope Hoisting の話が無視されてるように見える。webpack optimization の話を抜きに考えれば、という話か？
+:memo: 元スレでは Scope Hoisting の話が無視されてるように見える。webpack optimization の話を抜きに考えれば、という話か？
 
 ### Passive Event Listeners
 
 `addEventListener` の第 3 引数の話。Handler 中で `preventDefault` しないことが保証できるのであれば、それを UA につたえることで、先んじてデフォルト挙動をトリガーできるようになる。
 
-Note: 下記のようなケース。offset 計算が scroll を止めてしまう可能性があるが、scroll そのものを抑止したいわけではないので、 `{ passive: true }` をつけるべき
+:memo: 下記のようなケース。offset 計算が scroll を止めてしまう可能性があるが、scroll そのものを抑止したいわけではないので、 `{ passive: true }` をつけるべき
 
 ```js
 scrollContainer.addEventListener(
@@ -419,7 +419,7 @@ button.addEventListener("click", () => console.log("hello"), { once: true });
 
 「ユーザー入力が阻害されているかどうか」を判定する API。これを利用して、JavaScript タスクの実行を後ろ回しにできるかどうかをよりアグレッシブに判断できる、という話。
 
-Note: [Facebook が 提案した API](https://engineering.fb.com/2019/04/22/developer-tools/isinputpending-api/) という件でちょっと話題になったやつ。
+:memo: [Facebook が 提案した API](https://engineering.fb.com/2019/04/22/developer-tools/isinputpending-api/) という件でちょっと話題になったやつ。
 
 下記のように、動機処理を続行するかどうかの判断指標として利用するイメージ。
 
@@ -484,7 +484,7 @@ SpiderMonkey の新しい JiT Compiler
 
 https://hacks.mozilla.org/2020/11/warp-improved-js-performance-in-firefox-83/
 
-Note: 従来の Ion Builder が、エンジン全体で収集された Type Inference (TI) を元に最適化 JiT を行っていった。新しい Warp Builder は、Baseline JiT が作るインラインキャッシュのみを元にしたフロントエンドであること。コンパイラフロントエンドへの入力がシンプルになった、Cache IR に注力した開発を行うことで Baseline JiT も高速化された、ということくらいしか読み解けなかった。
+:memo: 従来の Ion Builder が、エンジン全体で収集された Type Inference (TI) を元に最適化 JiT を行っていった。新しい Warp Builder は、Baseline JiT が作るインラインキャッシュのみを元にしたフロントエンドであること。コンパイラフロントエンドへの入力がシンプルになった、Cache IR に注力した開発を行うことで Baseline JiT も高速化された、ということくらいしか読み解けなかった。
 
 ## 42. Always prefer to self-host third-party assets.
 
