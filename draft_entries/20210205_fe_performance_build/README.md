@@ -491,6 +491,40 @@ https://hacks.mozilla.org/2020/11/warp-improved-js-performance-in-firefox-83/
 
 ## 42. Always prefer to self-host third-party assets.
 
+Chrome に Cache Partitioning が導入され、パブリック CDN 上の同一アセットであっても、サイト別にキャッシュが分離されるようになったため、最早「別サイトでこのアセットがダウンロードされているかもしれない」と期待できなくなった。
+
+また、 [Self-hosting third-party resources: the good, the bad and the ugly](https://calendar.perfplanet.com/2019/self-hosting-third-party-resources-the-good-the-bad-and-the-ugly/) にある通り、サードパーティでホストされるものよりも、セルフホストされたアセットの方がキャッシュに残る可能性が高い。
+
 ## 43. Constrain the impact of third-party scripts.
 
+ビジネスサイドの要求により、サードパーティスクリプトを制御できない。往々にして、1 つのサードパーティスクリプトから、別の複数サードパーティスクリプトがリクエストされるようになっており、これらがパフォーマンス改善を台無しにしてしまう。
+
+DNS prefetch や defer loading だけでは不十分。
+https://github.com/patrickhulce/third-party-web#summary から、すべての JavaScript コード実行時間の 57％がサードパーティのコードに費やされていて、モバイルサイトの中央値としては 12 のサードパーティドメインにアクセスし、各サードパーティに対して約 3 リクエストを送っていることがわかる。
+
+さらに、3rd party -> 4th party -> ... -> 8th party まで連鎖するようなサードパーティスクリプトも決して少なくない。
+
+![](https://dougsillarsblog.files.wordpress.com/2019/02/screen-shot-2019-02-27-at-1.03.26-pm.png)
+
 ## 44. Set HTTP cache headers properly.
+
+### `Cache-Control: immutable`
+
+特にファイル名に hash を含むような、JS, CSS のアセットについて有用。revalidation request まで抑止される。
+
+immutable にすることで、不要な 304 応答を約 50%削減できる https://twitter.com/colinbendell/status/1256218497941635072 より
+
+### `Cache-Control: stale-while-revalidate`
+
+### vary, variants, その他の HTTP Header
+
+CDN のキャッシュ挙動を考慮しつつ、vary ヘッダを気にかけろ。
+
+コンテントネゴシエーションの兼ね合いで、少しだけヘッダの異なるリクエストに対して、オリジンへのリクエストが発生してしまうケースがある。
+これを避ける目的で、variants ヘッダが提案されているので、チェックしておくと良い。
+
+また、これらと合わせて他の HTTP ヘッダも確認すべし。
+
+![](http_header_misunderstanding.png)
+
+https://www.fastly.com/blog/headers-we-dont-want では、不必要なヘッダを付けてしまっている例や、逆に有用なのにあまり知られていないヘッダが紹介されている。
