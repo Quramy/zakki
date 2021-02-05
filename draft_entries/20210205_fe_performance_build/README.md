@@ -2,6 +2,38 @@
 
 https://www.smashingmagazine.com/2021/01/front-end-performance-2021-free-pdf-checklist/#build-optimizations
 
+## 読んだ感想
+
+取り扱われている内容は主に JavaScript の話。build だけでなく、配信に関する話題も取り扱われている。
+
+Smashing Magazine の記事本体では、トピックの中身に深く触れてはおらず、「この blog を読むといいよ！」というノリで大量のリンクが出てくるだけなので、一個一個開いて中身を読まないと、理解が進まない。
+
+以下は各節のなんとなく分類。
+
+- 序論
+  - [28. Have we defined our priorities?](#28-have-we-defined-our-priorities)
+- バンドル, webpack 関連
+  - [29. Do you use native JavaScript modules in production?](#29-do-you-use-native-javascript-modules-in-production)
+  - [30. Are you using tree-shaking, scope hoisting and code-splitting?](#30-are-you-using-tree-shaking-scope-hoisting-and-code-splitting)
+  - [31. Can we improve Webpack's output?](#31-can-we-improve-webpacks-output)
+  - [34. Do we serve legacy code only to legacy browsers?](#34-do-we-serve-legacy-code-only-to-legacy-browsers)
+- JavaScript 一般系
+  - [32. Can you offload JavaScript into a Web Worker?](#32-can-you-offload-javascript-into-a-web-worker)
+  - [33. Can you offload "hot paths" to WebAssembly?](#33-can-you-offload-hot-paths-to-webassembly)
+  - [41. Take advantage of optimizations for your target JavaScript engine.](#41-take-advantage-of-optimizations-for-your-target-javascript-engine)
+- SPA 関連
+  - [38. Do we use partial hydration?](#38-do-we-use-partial-hydration)
+  - [39. Have we optimized the strategy for React/SPA?](#39-have-we-optimized-the-strategy-for-reactspa)
+  - [40. Are you using predictive prefetching for JavaScript chunks?](#40-are-you-using-predictive-prefetching-for-javascript-chunks)
+- Prj での運用系
+  - [35. Identify and rewrite legacy code with incremental decoupling.](#35-identify-and-rewrite-legacy-code-with-incremental-decoupling)
+  - [36. Identify and remove unused CSS/JS.](#36-identify-and-remove-unused-cssjs)
+  - [37. Trim the size of your JavaScript bundles.](#37-trim-the-size-of-your-javascript-bundles)
+- その他
+  - [42. Always prefer to self-host third-party assets.](#42-always-prefer-to-self-host-third-party-assets)
+  - [43. Constrain the impact of third-party scripts.](#43-constrain-the-impact-of-third-party-scripts)
+  - [44. Set HTTP cache headers properly.](#44-set-http-cache-headers-properly)
+
 ## 28. Have we defined our priorities?
 
 ページが必要とするアセットを列挙して、それぞれのアセットがどのグループに属するかを洗い出すべし。
