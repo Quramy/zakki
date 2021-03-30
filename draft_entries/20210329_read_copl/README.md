@@ -86,6 +86,8 @@ Flow 自体が OCaml で書かれているくらい、Flow は ML の影響を�
 
 折角なので、僕も Node.js + TypeScript で REPL を組んでみた。
 
+![](./repl_capture.png)
+
 https://github.com/Quramy/copl-ts
 
 日頃のお仕事だと構文解析器を書くことなんて中々ないので、そういう意味でも新鮮だったので楽しめたと思う。
