@@ -6,7 +6,7 @@ In this entry, I introduce how to generate TypeScript AST node.
 
 ## Motivation
 
-TypeScript allows us to transform some .ts sources, as known as "Custom Transformer".
+TypeScript allows us to transform .ts sources, as known as "Custom Transformer".
 
 ```ts
 const customTransformerFactory: ts.TransformerFactory = (ctx) => {
