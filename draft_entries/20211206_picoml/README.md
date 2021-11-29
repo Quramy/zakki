@@ -264,3 +264,230 @@ function evaluate(expr: ExpressionNode): number {
 コンパイラを作る上では即時評価の機能は実装する必要はないのだけど「設計した言語を動かせるようにする」という楽しみが割と簡単に味わえるので、そういう意味ではオススメである。
 
 最後は「4. コンパイル機能の実装」について。
+
+まずは「どのような環境で動作させたいか」に従って、出力対象を決める必要がある。PicoML は以下の理由で WebAssembly を選択している。
+
+- Node.js でもブラウザでも動作する
+- 仕様そのものを学びたかった
+
+ということで、あとは WebAssembly のランタイムが読める形式、要するに WASM を生成するだけだ。
+
+先程から例として使っている自然数の加算・乗算器に即していうのであれば、たとえば「`(1 + 2) * 3` を計算してその結果を返す WebAssembly モジュール」は以下の wasm となる。
+
+```
+00000000 | 0061  736d  0100  0000  0105  0160  0001  7f03
+00000010 | 0201  0007  0801  046d  6169  6e00  000a  0c01
+00000020 | 0a00  4101  4102  6a41  4103  6c0b
+```
+
+いきなりバイト値の列を例示しても流石にチンプンカンプンなので、ここもステップ・バイ・ステップで説明していく。
+
+まずは「ただ自然数定数を返す」だけの関数を持ったプログラムから。
+
+WebAssembly にはバイナリ表現の WASM だけでなく、テキスト表現の WAT(Web Assembly Text format)という形式がある。WebAssembly の実行エンジンがサポートするのは飽くまで WASM だけだが、人間が読み書きしやすいように用意されているフォーマットが WAT だ。
+
+以下が WAT による「整数の 1 を返すプログラム」の例。
+
+```wat
+(module
+  (func (export "main") (result i32)
+    i32.const 1
+  )
+)
+```
+
+3 行目の `i32.const 1` が「32 bit 整数の `1`」という意味だ。 `(export "main")` というのは「`"main"` という名前でこの関数をモジュール外に公開するよ」という意味。したがって、この WAT に対応する WASM は次のように JavaScript から実行できる。
+
+```ts
+const instance = await WebAssembly.instatiateStreaming(fetch("test.wasm"));
+const result = instance.exports["main"]();
+console.log(result);
+```
+
+さて、WAT ではいくつかの Abbreviation(短縮記法)が定義されており、先程の例も短縮記法で表現していた。 Abbreviation に頼らずに書くと、以下のように書き下される。
+
+```wat
+(module
+  (; 関数の型の定義 ;)
+  (type $mainFnType (func (result i32)))
+
+  (; 関数本体の定義 ;)
+  (func $main (type $mainFnType)
+    i32.const 1)
+
+  (; 外部交換の定義 ;)
+  (export "main" (func $main))
+)
+```
+
+また、`$mainFnType` のような `$` 始まりの部分は名前を付けた対象の参照を意味しているが、実体は順番でしかない。たとえば `type $mainFnType` は「type 宣言の 0 番目」だし、 `func $main` は「関数定義の 0 番目」に対応することになる。 `$` ではなく、このインデックス値を使って WAT を書くこともできる。
+
+```wat
+(module
+  (type (func (result i32)))
+  (func (type 0)
+    i32.const 1)
+  (export "main" (func 0))
+)
+```
+
+ここまで来ると大分 WASM 形式に近づいてきている。これをバイナリ表現（WASM）で表すと次のようになる。
+
+```
+00000000 | 0061  736d  0100  0000  0105  0160  0001  7f03
+00000010 | 0201  0007  0801  046d  6169  6e00  000a  0601
+00000020 | 0400  4101  0b
+```
+
+https://webassembly.github.io/wabt/demo/wat2wasm/ を使うと、WAT が WASM にどのように対応しているかのログを見ることができる。先程の例の WAT を変換すると次のログが得られる。
+
+```
+0000000: 0061 736d          ; WASM_BINARY_MAGIC
+0000004: 0100 0000          ; WASM_BINARY_VERSION
+; section "Type" (1)
+0000008: 01                 ; section code
+0000009: 00                 ; section size (guess)
+000000a: 01                 ; num types
+; func type 0
+000000b: 60                 ; func
+000000c: 00                 ; num params
+000000d: 01                 ; num results
+000000e: 7f                 ; i32
+0000009: 05                 ; FIXUP section size
+; section "Function" (3)
+000000f: 03                 ; section code
+0000010: 00                 ; section size (guess)
+0000011: 01                 ; num functions
+0000012: 00                 ; function 0 signature index
+0000010: 02                 ; FIXUP section size
+; section "Export" (7)
+0000013: 07                 ; section code
+0000014: 00                 ; section size (guess)
+0000015: 01                 ; num exports
+0000016: 04                 ; string length
+0000017: 6d61 696e          ain  ; export name
+000001b: 00                 ; export kind
+000001c: 00                 ; export func index
+0000014: 08                 ; FIXUP section size
+; section "Code" (10)
+000001d: 0a                 ; section code
+000001e: 00                 ; section size (guess)
+000001f: 01                 ; num functions
+; function body 0
+0000020: 00                 ; func body size (guess)
+0000021: 00                 ; local decl count
+0000022: 41                 ; i32.const
+0000023: 01                 ; i32 literal
+0000024: 0b                 ; end
+0000020: 04                 ; FIXUP func body size
+000001e: 06                 ; FIXUP section size
+```
+
+WASM のマジックナンバーから始まり、`type` に相当するセクション、`function` に相当するセクション、 `export` に相当するセクションと続いていくのが見て取れる。`export` セクションの後に `section "Code" (10)` と来ているが、これが関数の本体部分だ。
+
+豆知識だが、WASM のマジックナンバーである `0061736d` は ASCII に直すと `asm` だ。Java の.class ファイルが `c0ffee` から始まるのと似ている。
+
+WAT と WASM の関係が見えてきたところで、 `$main` 関数の中身を少しだけ書き換えてみよう。「`1` を返す」から「`1 + 2` を返す」に変更してみる。
+
+```wat
+(module
+  (type (func (result i32)))
+  (func (type 0)
+    i32.const 1
+    i32.const 2
+    i32.add)
+  (export "main" (func 0))
+)
+```
+
+`i32.add` というのが足算の命令だ。後述するが、WebAssembly の命令はシンプルなスタックマシンなので、実行する命令が後置されていく。
+
+先ほどと同じ様に wat2wasm で変換ログを眺めてみると、最後の Code Section までは何も変わらないことがわかるはずだ（関数の中身しか書き換えてないから当たり前かもしれないが）。
+
+```
+// (中略)
+; section "Code" (10)
+000001d: 0a                 ; section code
+000001e: 00                 ; section size (guess)
+000001f: 01                 ; num functions
+; function body 0
+0000020: 00                 ; func body size (guess)
+0000021: 00                 ; local decl count
+0000022: 41                 ; i32.const
+0000023: 01                 ; i32 literal
+0000024: 41                 ; i32.const
+0000025: 02                 ; i32 literal
+0000026: 6a                 ; i32.add
+0000027: 0b                 ; end
+0000020: 07                 ; FIXUP func body size
+000001e: 09                 ; FIXUP section size
+```
+
+最後の 2 行に `FIXUP *** size` とあるのは、Code Section 全体のサイズと、0 番目の関数コード（= `$main` 関数のこと）のサイズがセクションのヘッダ側になるため。
+
+```
+0000020: 07                 ; FIXUP func body size
+000001e: 09                 ; FIXUP section size
+```
+
+この例では、関数コードが以下に示す 7 バイトの列からなっているので、 `func body size` が 7 であり、関数の個数が 1 個 7 + 1 (関数個数) + 1(func body size の分) = 9 となって、Code Section 全体のサイズが 9 バイトとというわけだ。
+
+```
+0000021: 00                 ; local decl count
+0000022: 41                 ; i32.const
+0000023: 01                 ; i32 literal
+0000024: 41                 ; i32.const
+0000025: 02                 ; i32 literal
+0000026: 6a                 ; i32.add
+0000027: 0b                 ; end
+```
+
+逆に、上記の関数コードのバイト列部分さえ生成すれば、後はその長さを数えて固定値のバイト列と組み合わせれば WASM になる、ということだ。
+
+さて、今は自然数の加算と乗算のみからなるプログラムを見てきているわけだが、32 ビット整数の演算は WebAssembly 仕様の [Binary Format / Numeric Instructions](https://webassembly.github.io/spec/core/binary/instructions.html#numeric-instructions) に記載されている。
+
+| WAT Instruction | WASM コード値 | 意味                                                      |
+| :-------------- | ------------: | :-------------------------------------------------------- |
+| `i32.const x`   |          0x41 | 定数 `x` をスタックに積む                                 |
+| `i32.add`       |          0x6a | スタックから値 2 つを消費し、その加算結果をスタックに積む |
+| `i32.mul`       |          0x6c | スタックから値 2 つを消費し、その乗算結果をスタックに積む |
+
+ここでスタックマシンの説明をするため、`1 + 2` を実行する関数の WAT 例に戻ろう。
+
+```wat
+(func (export "main") (result i32)
+  i32.const 1
+  i32.const 2
+  i32.add
+)
+```
+
+WebAssembly の関数はスタックマシンベースの計算モデルに従っている。次の図は上の WAT における `main` 関数の開始から修了までの 3 命令でスタックがどのように変化していくかを表している。
+
+![](images/stack_simple.png)
+
+さらに WAT に `i32.const 3` `i32.mul` を追加してみる。
+
+```wat
+(func (export "main") (result i32)
+  i32.const 1
+  i32.const 2
+  i32.add
+  i32.const 3
+  i32.mul
+)
+```
+
+スタックマシンは次のように動く。要するに `(1 + 2) * 3` を実行したわけだ。
+
+![](images/stack_complex_1.png)
+
+逆に次のように `i32.add` の位置を少しだけ変更すれば、これは `1 + 2 * 3` の例だ。
+
+![](images/stack_complex_2.png)
+
+抽象構文木を思い出してほしい。抽象構文木によって中置演算子 `+` や `*` を構造的に表すことができた。
+
+![優先度と木構造](images/ast_nested.png)
+
+「左右のノード（オペランド）がスタックに積まれている状態で、演算を実行する」というルールで加算も乗算も表現できてしまう。
