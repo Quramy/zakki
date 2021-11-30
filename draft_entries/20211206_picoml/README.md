@@ -490,4 +490,65 @@ WebAssembly の関数はスタックマシンベースの計算モデルに従�
 
 ![優先度と木構造](images/ast_nested.png)
 
-「左右のノード（オペランド）がスタックに積まれている状態で、演算を実行する」というルールで加算も乗算も表現できてしまう。
+「左右のノード（オペランド）がスタックに積まれている状態で、演算を実行する」というルールで加算も乗算も表現できてしまう。コードで表現すると、以下の関数 `compileToInstructions` を実行すればよいということだ。
+
+```ts
+function compileToInstructions(
+  expr: ExpressionNode,
+  instructions: number[] = []
+): number[] {
+  switch (expr.kind) {
+    case "Nat": {
+      return [...instructions, 0x41, expr.value]; // "i32.const ${value}"
+    }
+    case "BinaryExpression": {
+      switch (expr.operator) {
+        case "add": {
+          return [
+            ...instructions,
+            ...compileToInstructions(expr.left, instructions),
+            ...compileToInstructions(expr.right, instructions),
+            0x6a // "i32.add"
+          ];
+        }
+        case "multiply": {
+          return [
+            ...instructions,
+            ...compileToInstructions(expr.left, instructions),
+            ...compileToInstructions(expr.right, instructions),
+            0x6c // "i32.mul"
+          ];
+        }
+      }
+    }
+  }
+}
+```
+
+上記が加算乗算を実行する WASM プログラム出力コンパイラの中核となるコードとなるのだが、「3. 即時評価機能の実装」で記述した「加算乗算を即時評価する機能」のコード（下記）と見比べてみてほしい。どちらのコードの場合も「左右のノード（オペランド）に再帰的に作用させた結果を使って、親ノード結果とする」という構造は全く一緒だ。
+
+```ts
+function evaluate(expr: ExpressionNode): number {
+  switch (expr.kind) {
+    case "Nat": {
+      return expr.value;
+    }
+    case "BinaryExpression": {
+      switch (expr.operator) {
+        case "add": {
+          return evaluate(expr.left) + evaluate(expr.right);
+        }
+        case "multiply": {
+          return evaluate(expr.left) * evaluate(expr.right);
+        }
+      }
+    }
+  }
+}
+```
+
+大雑把且つ非常に簡単ではあるが、自作のプログラミング言語が WebAssembly にコンパイルされて動作するまでの流れは以上となる。ここまでで取り扱った、自然数の加算・乗算言語のコンパイラについて、 TypeScript Playground のリンクを貼っておく。
+
+[加算乗算プログラムの WASM コンパイラ実装例](https://tsplay.dev/mZbJ4m)
+
+たかだか 200 行にも満たない程度のプログラムだが、「言語の生成規則から抽象構文木を作る」「構文木を探索し、ノード種別毎の処理を再帰的に呼び出していく」というエッセンスは詰まっている。 PicoML にしたって、最初はこの例のようなコードからスタートして、徐々に変数定義や関数適用のような複雑な機能を追加する形で実装を進めていた。
