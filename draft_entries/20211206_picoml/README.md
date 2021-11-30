@@ -552,3 +552,98 @@ function evaluate(expr: ExpressionNode): number {
 [加算乗算プログラムの WASM コンパイラ実装例](https://tsplay.dev/mZbJ4m)
 
 たかだか 200 行にも満たない程度のプログラムだが、「言語の生成規則から抽象構文木を作る」「構文木を探索し、ノード種別毎の処理を再帰的に呼び出していく」というエッセンスは詰まっている。 PicoML にしたって、最初はこの例のようなコードからスタートして、徐々に変数定義や関数適用のような複雑な機能を追加する形で実装を進めていた。
+
+## Intermediate Representation
+
+ここからは もう少し具体的なテクニックの話を書いていく。
+
+「プログラミング言語をつくる流れ」の節では、以下の流れで実装を説明していた。
+
+```
+Source code
+  |
+  | (parse)
+  v
+Abstact Syntax Tree
+  |
+  | (compile)
+  v
+WebAssembly Binary Format(wasm)
+```
+
+PicoML の実装にあたっては、このフローはもう少し細分化している。
+
+```
+Source code
+  |
+  | (parse)
+  v
+ML Abstact Syntax Tree
+  |
+  | (compile)
+  v
+WAT Abstact Syntax Tree
+  |
+  | (convert)
+  v
+WebAssembly Strutual Object
+  |
+  | (unparse)
+  v
+WebAssembly Binary Format(wasm)
+```
+
+ポイントは ML の AST は WebAssembly Text Format の AST に変換するようにしていることだ。
+
+WASM は [WebAssembly Structure](https://webassembly.github.io/spec/core/syntax/index.html) をバイナリ表現に落とし込んだものなのだけど、コンパイルロジックの中間構造として扱うには悩ましい点が多いのだ。
+
+具体例で説明した方が伝わりやすいかもしれない。次のコードは WAT としては正しいコード例だ。
+WebAssembly に明るくなくても、なんとなく読めるのではないだろうか。
+
+```wat
+(module
+  (func $twice (param $x i32) (result i32)
+    local.get $x
+    i32.const 2
+    i32.mul)
+  (func (export "main") (result i32)
+    i32.const 2
+    call $twice))
+```
+
+しかし、 `$twice` のような名前の部分や、関数シグネチャを関数名の直後に記述できているのは飽くまで Abbreviation という略記法に依るもので、WebAssembly Structure の世界には、それらの概念が存在しない。
+
+名前でなく、順番のインデックス値だけだし、関数のシグネチャも `func` ではなく、 `type` という構造に分けて表現しなくてはならない。
+
+Abbreviation を一切使わずに先程の WAT を書き直すと、すなわちこれが Structure に近い姿ということになるのだけど、次のようになってしまう。
+
+```wat
+(module
+  (type (func (result i32)))
+  (type (func (param i32) (result i32)))
+  (func (type 1)
+    local.get 0
+    i32.const 2
+    i32.mul)
+  (func (type 0)
+    i32.const 2
+    call 0)
+  (export "main" (func 1)))
+```
+
+WebAssembly Structure を中間表現に用いることもできなくはないが、`call $twice` に相当する ML ノードを処理する際に Structure に `$main` という名前は保持されないので、結局 ML AST の探索中は常に「`$twice` は `func 0` である」というインデックス管理を別にしておくことになってしまう。
+
+別途自前でインデックスの管理をするくらいであれば、ML AST をコンパイルするときは一定の Abbreviation を許容した WAT AST をそのまま中間表現としておき、一通り ML -> WAT のコンパイルが済んだ後で Abbreviation を正規化してバイナリ表現に落とした方が断然見通しが良い。
+
+また、このように ML AST -> WAT AST -> WebAssembly Structure -> WASM として、変換を多段階にしておくことによって、「整数定数をセットするには `0x41`」のようなことを、ML 部分のコンパイル時に考えなくて済むようになり、コード全体の可読性が向上するという利点もあった。
+
+## WAT Parser / Unparser / Template
+
+最終的に WASM を出力する必要があるので、 WAT AST -> WASM の変換処理を実装が生じるのは上述の通りだ。
+
+これとは別に、PicoML には以下の実装も含まれている。
+
+- WAT のソースコード文字列から WAT AST を得るための parser
+- WAT AST から WAT ソースコード文字列を出力するための unparser
+
+両方とも ML ソースコードから WASM を得る目的のみであれば不要だったのだけれど、副次的な理由があって実装することになった。
