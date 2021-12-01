@@ -734,6 +734,7 @@ function compileToInstructions(
           return wat.instructions`
             ${instructions}
             ${compileToInstructions(expr.left, instructions)}
+            ${compileToInstructions(expr.right, instructions)}
             i32.add
           `;
         }
@@ -741,6 +742,7 @@ function compileToInstructions(
           return wat.instructions`
             ${instructions}
             ${compileToInstructions(expr.left, instructions)}
+            ${compileToInstructions(expr.right, instructions)}
             i32.mul
           `;
         }
