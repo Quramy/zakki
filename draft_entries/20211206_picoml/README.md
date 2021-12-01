@@ -555,7 +555,7 @@ function evaluate(expr: ExpressionNode): number {
 
 ## Intermediate Representation
 
-ここからは もう少し具体的なテクニックの話を書いていく。
+ここからはもう少し具体的なテクニックの話を書いていく。
 
 「プログラミング言語をつくる流れ」の節では、以下の流れで実装を説明していた。
 
@@ -593,12 +593,11 @@ WebAssembly Strutual Object
 WebAssembly Binary Format(wasm)
 ```
 
-ポイントは ML の AST は WebAssembly Text Format の AST に変換するようにしていることだ。
+ML の AST は WebAssembly Text Format(WAT) の AST に変換に徹しているところがポイント。
 
 WASM は [WebAssembly Structure](https://webassembly.github.io/spec/core/syntax/index.html) をバイナリ表現に落とし込んだものなのだけど、コンパイルロジックの中間構造として扱うには悩ましい点が多いのだ。
 
-具体例で説明した方が伝わりやすいかもしれない。次のコードは WAT としては正しいコード例だ。
-WebAssembly に明るくなくても、なんとなく読めるのではないだろうか。
+具体例で説明した方が伝わりやすいかもしれない。次のコードは WAT としては正しいコード例だ。WebAssembly に明るくなくても、なんとなく読めるのではないだろうか。
 
 ```wat
 (module
@@ -611,9 +610,7 @@ WebAssembly に明るくなくても、なんとなく読めるのではない�
     call $twice))
 ```
 
-しかし、 `$twice` のような名前の部分や、関数シグネチャを関数名の直後に記述できているのは飽くまで Abbreviation という略記法に依るもので、WebAssembly Structure の世界には、それらの概念が存在しない。
-
-名前でなく、順番のインデックス値だけだし、関数のシグネチャも `func` ではなく、 `type` という構造に分けて表現しなくてはならない。
+`$twice` のような名前の部分や、関数シグネチャを関数名の直後に記述できているのは飽くまで Abbreviation (略記法)によるもので、WebAssembly Structure の世界には、それらの概念は存在しない。関数やローカル変数を指定するのに利用可能なものは順番を示すインデックス値だけだし、関数シグネチャも `func` に直接記述できず `type` という構造に分けて表現しなくてはならない。
 
 Abbreviation を一切使わずに先程の WAT を書き直すと、すなわちこれが Structure に近い姿ということになるのだけど、次のようになってしまう。
 
@@ -631,9 +628,9 @@ Abbreviation を一切使わずに先程の WAT を書き直すと、すなわ�
   (export "main" (func 1)))
 ```
 
-WebAssembly Structure を中間表現に用いることもできなくはないが、`call $twice` に相当する ML ノードを処理する際に Structure に `$main` という名前は保持されないので、結局 ML AST の探索中は常に「`$twice` は `func 0` である」というインデックス管理を別にしておくことになってしまう。
+WebAssembly Structure をコンパイルロジックの中間表現に用いることもできなくはないが、`call $twice` に相当する ML ノードを処理する際に Structure に `$main` という名前は保持されないので、結局 ML AST の探索中は常に「`$twice` は `func 0` である」というインデックス管理する羽目になる。
 
-別途自前でインデックスの管理をするくらいであれば、ML AST をコンパイルするときは一定の Abbreviation を許容した WAT AST をそのまま中間表現としておき、一通り ML -> WAT のコンパイルが済んだ後で Abbreviation を正規化してバイナリ表現に落とした方が断然見通しが良い。
+別途自前でインデックスの管理をするくらいであれば、ML AST のコンパイル時は Abbreviation を許容した WAT AST をそのまま中間表現としておき、一通り ML -> WAT AST のコンパイルが済んだ後で Abbreviation を正規化してStructureに落とした方が断然見通しが良いのだ。
 
 また、このように ML AST -> WAT AST -> WebAssembly Structure -> WASM として、変換を多段階にしておくことによって、「整数定数をセットするには `0x41`」のようなことを、ML 部分のコンパイル時に考えなくて済むようになり、コード全体の可読性が向上するという利点もあった。
 
