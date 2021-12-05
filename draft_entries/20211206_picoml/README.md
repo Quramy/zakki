@@ -2,6 +2,8 @@
 
 ![](images/eye_catch.jpg)
 
+Photo by [Lukas Tennie](https://unsplash.com/@luk10) from unsplash
+
 ## はじめに
 
 このエントリでは、僕が趣味で作っている PicoML という自作プログラミング言語の話を書こうと思う。
