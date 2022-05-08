@@ -1,10 +1,14 @@
+# TypeScript におけるモジュール関連オプションの整理
+
 TypeScript 4.7 で "module" という名前で始まる Compiler Option がさらに追加されて、さすがに何が何やら感あるので、役割を軽く整理。
 
-それぞれの詳細な値は本家の Reference を読みに行ってください。
+この記事では雑な紹介に留めるので、それぞれの詳細は [TSConfig Reference](https://www.typescriptlang.org/tsconfig) を読みに行ってください。
 
-## 早見表
+## 対応関係
 
-![cheetimg.png](cheetimg.png)
+ソースコードとそれぞれのオプションが何に作用しているのかを雑に図示するとこんな感じ。
+
+![cheetsheet](cheetimg.png)
 
 ## 重要なこと
 
@@ -24,7 +28,7 @@ TypeScript のソースにおける `import` / `export` のステートメント
 
 `--module` によってデフォルト値が決まる。
 
-たとえば `--module commonjs` であれば、 `--moduleResolution node` であったし、`--module node16` であれば `--moduleResolution node16` となる。
+たとえば `--module commonjs` であれば `--moduleResolution node` となるし、`--module node16` であれば `--moduleResolution node16` となる。
 
 `import { Button } from "./Button"` のような、拡張子を省略した相対パス探索が行われるのは `--moduleResolution node` の設定が反映されているため。
 
