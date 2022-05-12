@@ -22,9 +22,10 @@ TypeScript としての Node.js Native ESM サポートはシンプルで、拡�
 
 TypeScript の Native ESM サポートについては、[4.5 Beta](https://devblogs.microsoft.com/typescript/announcing-typescript-4-5-beta/#esm-nodejs) の頃から色々情報が出てきているので、その主だった差分を書いておく。
 
-- TypeScript 4.5 の時点では、Node.js ESM サポートは Nightly Build でしか利用できない実験的な機能であったが、4.7 で Generally Available に格上げされた。
+- TypeScript 4.5 の時点では、Node.js ESM サポートは Nightly Build でしか利用できない実験的な機能であったが、4.7 で晴れて安定版の位置付けに
 - 4.5 の時点では `--module node12` という名前だったが、4.7 以降では `--module node16` に変更されている。挙動自体は `node12` と同じ。Top Level Await についての解釈を考慮したときに、Node.js v12 よりも「Node.js v16 に対応している」と考えた方が綺麗だったため。
-- Type Reference Directive 内で利用可能な `types`, `module-resolution` オプションが追加されている（ただしまだ不安定）。
+- Type Reference Directive 内で利用可能な `module-resolution` オプションが追加されている
+- `--moduleDetection` という Compiler Option が追加された。スクリプトかそうじゃないかの挙動の判定に関係するが、基本的に気にする必要はない。
 
 他にも Language Service 関連などのの細かい変更は諸々入っているはず。
 
@@ -34,13 +35,13 @@ TypeScript の Native ESM サポートについては、[4.5 Beta](https://devbl
 
 [Node.js determines module type without file content](https://nodejs.org/api/packages.html#determining-module-system) にある通り、対象のファイルを ESM として読み込むのか、CJS として読み込むのかを**拡張子だけ**で決定する。
 
-| JavaScript source file extension | Module Type                                                                                       |
-| :------------------------------- | :------------------------------------------------------------------------------------------------ |
-| `.js`                            | Contextual. Determined as ESM If package.json has `"type": "module"`, otherwise determined as CJS |
-| `.mjs`                           | Always ESM                                                                                        |
-| `.cjs`                           | Always CJS                                                                                        |
+| JavaScript source file extension | Module Type                                                               |
+| :------------------------------- | :------------------------------------------------------------------------ |
+| `.js`                            | package.json に `"type": "module"` の記述があれば ESM, そうでなければ CJS |
+| `.mjs`                           | 常に ESM                                                                  |
+| `.cjs`                           | 常に CJS                                                                  |
 
-また、ESM と CJS を混在して扱う場合、以下のルールに従う。
+なお、ESM と CJS を混在して扱う場合、以下のルールに従う。
 
 | import(require) するファイル | import(require) されるファイル | Static Import | Dynamic Import | require |
 | :--------------------------- | :----------------------------- | :------------ | :------------- | :------ |
@@ -48,6 +49,8 @@ TypeScript の Native ESM サポートについては、[4.5 Beta](https://devbl
 | CJS                          | CJS                            | OK            | NG             | OK      |
 | ESM                          | CJS                            | OK            | NG             | NG      |
 | CJS                          | ESM                            | NG            | OK             | NG      |
+
+また、CommonJS や 疑似 ESM で利用可能であった、 `__dirname` や `process` などは Native ESM からはアクセスできない。
 
 ## TypeScript における Node.js の Native ESM サポート
 
@@ -67,10 +70,12 @@ Node.js が拡張子を使い分けたことに合わせて、TypeScript にも�
 
 上述の拡張子の対応を念頭に置いた場合、 `.ts` ファイルの最終的な Node.js での解釈は package.json に依存することになる。 `--module node16` では、
 
-- package.json が `"type": "module"` であれば、.ts を Native ESM と解釈して、import / export 文をそのまま出力する(従来における `--module esnext`)
-- package.json が `"type": "module"` でなければ、.ts を CommonJS と解釈して、import / export 文は `require` / `module.exports=...` に変換する(従来における `--module commonjs`)
+- package.json が `"type": "module"` であれば、.ts を Native ESM と解釈して、Import / Export Statement をそのまま出力する(従来における `--module esnext`)
+- package.json が `"type": "module"` でなければ、.ts を CommonJS と解釈して、Import / Export Statement は `require` / `module.exports=...` に変換する(従来における `--module commonjs`)
 
 もちろん、 `.mts` であれば package.json と関係なく前者となるし、`.cts` であれば後者。
+
+なお、 `--module commonjs` を指定した場合は、ソースコードのファイルの拡張子や package.json の `"type"` フィールドと関係なく、 Import / Export Statement は `reuiqre` / `module.exports=...` に変換されるし、 `--module exnext` であれば、.cts の Import / Export Statement は保存される。要するに、今までと同じオプションを適用させたら
 
 ### Module Specifier
 
@@ -88,14 +93,14 @@ import "./hoge";
 import "./hoge.mjs"; // ./hoge.mts ではない！
 ```
 
-ここで重要なのは、Module Specifier に記述するのは TypeScript の拡張子ではなく**「JavaScript にトランスパイルされた後の世界における拡張子」**であること。
+ここで重要なのは、Module Specifier に記述するのは TypeScript の拡張子ではなく **「JavaScript にトランスパイルされた後の世界における拡張子」** であること。
 
-「`"./hoge"` や `"./hoge.mts"` のように書きたい」という気持ちも一定理解できるが、これはそもそもの「TypeScript は Module Sepecifer を書き換えない」というポリシーがあるため。
+「`"./hoge"` や `"./hoge.mts"` のように書きたい」という気持ちも一定理解できるが、これは TypeScript が「Module Sepecifer を書き換えない」というポリシーを選択しているため。
 
 TypeScript コントロールしてくれるのは、「Module Specifer に対応する TypeScript ソースコードや型定義ファイルがどこにあるのかを解決する」ことだけ。
 これを制御しているのが tsconfig における `moduleResolution` プロパティ。 実際 `--module node16` とすると裏では `--moduleResolution node16` にセットされる。
 
-### Conditional Exports と 型定義ファイルの出し分け・読み分け
+### Conditional Exports と 型定義ファイルの出し分け
 
 `--module esnext` の世界でも、Pure ESM な Node.js パッケージを構成することはできた（ [sindresorhus](https://gist.github.com/sindresorhus/a39789f98801d908bbc7ff3ecc99d99c)が推しているヤツ ）。
 
@@ -129,17 +134,7 @@ TypeScript 4.7 では、`.cts` ファイル(または `type: module` でない�
 
 上記のように記載することによって、ESM としてパッケージを利用するユーザーと CJS としてパッケージを利用するユーザーに別々の型定義を提供することができる。
 
-これと同じようなことを型定義ファイルの側で明示的に指定することもできる。
-
-```ts
-///<reference types="pkg" resolution-mode="require" />
-
-///<reference types="pkg" resolution-mode="import" />
-```
-
-ただし、`resolution-mode` は `import type` 関連の機能が一部動作しないとのこと(4.7 RC で最後の最後に rever されていた。詳細はよくわかっていない)。
-
-型定義の読み分けについて、恩恵が一番わかりやすいのが `@types/node` だと思うのだけど、2022 年 5 月現在 Definitely Typed の issue / PRs を軽く検索した感じ、関連するものがなさそう。
+型定義の出し分けについて、恩恵が一番わかりやすいのが `@types/node` だと思うのだけど、2022 年 5 月現在 Definitely Typed の issue / PRs を軽く検索した感じ、関連するものがなさそう。
 
 ```ts
 import fs from "node:fs";
@@ -147,6 +142,28 @@ import fs from "node:fs";
 // このファイルがCommonJSとして扱われるのであればOK, ESMとして扱われるのであればerrorにしたい
 console.log(__dirname);
 ```
+
+### `resolution-mode` による明示的な読み分け
+
+逆に hoge パッケージを利用する側から明示的に読み分けることもできる。`resolution-mode` オプションが Triple Slash Directive Comment でかけるようになった。
+
+```ts
+/// <reference types="hoge" resolution-mode="require" />
+
+/// <reference types="hoge" resolution-mode="import" />
+```
+
+正直、これらのユースケースを理解できていない。 Tripe Slash Directive なので、Definitely Typed の Contributor 向け？
+
+`resolution-mode` については Import Assertion っぽい記法も導入された。ただし、この記法については、4.7 RC で最後の最後に Nightly でしか使えないようになっている。
+
+```ts
+import type { Hoge } from "hoge" assert { "resolution-mode": "require" };
+
+import type { Hoge } from "hoge" assert { "resolution-mode": "import" };
+```
+
+https://github.com/microsoft/TypeScript/issues/48644 Nightly に格下げされた経緯が書かれているが、そもそもこの Syntax が意味的に正しいのかが微妙、といった理由があるようで、十分な Feedback が得られるまでは正式版としたくない模様。
 
 ### `--module node16` と foot gun
 
@@ -206,9 +223,50 @@ import * as hoge from "hoge";
 }
 ```
 
-この状況にぶち当たった場合、hoge パッケージの提供元に 修正 PR を merge してもらわねばならなくなる（もしかすると Ambient Module 宣言で自分で workaround 的に書くことができるかもしれないが、あまり推奨できる方法ではない）。
+この状況にぶち当たった場合、hoge パッケージの提供元に 修正 PR を merge してもらわねばならなくなる。もしかすると Ambient Module 宣言と前述の Import Type Statement + `"resultion-mode"` でどうにかできるかもしれないが、贔屓目で見たとしても推奨された方法ではないはず。。。
 
 逆に、**自身で Conditional Exported な Package を公開するのであれば、それぞれのエントリポイントについて `"types"` フィールドの明記と同梱を忘れてはいけない**。
+
+### ESM - CJS Interop
+
+こちらもパッケージ利用者泣かせになりうる件。
+
+似非 ESM を Native ESM から import した場合に、特に Default Export 周りで問題が発生する可能性がある。
+
+```ts
+/* source ./lib.ts */
+const x = "value";
+export default x;
+```
+
+```js
+/* dist ./lib.js */
+const x = "value";
+exports.default = x;
+```
+
+```ts
+/* dist ./lib.d.ts */
+declare const x = "value";
+export default x;
+```
+
+これらが `lib` となっていたとして、これを Native ESM からimportすると、↓のコードのCompileが通らなくてはならない。
+
+
+```js
+/* ./index.mts */
+
+import lib from "lib";
+
+console.log(lib.default); // <- default が必要
+```
+
+[TypeScript blog](https://devblogs.microsoft.com/typescript/announcing-typescript-4-7-rc/#commonjs-interop) には、「厳密なのは無理だけど、ヒューリスティックに頑張るよ」的なことが書いてあるが、正直この条件が不明。
+
+> There isn’t always a way for TypeScript to know whether these named imports will be synthesized, but TypeScript will err on being permissive and use some heuristics when importing from a file that is definitely a CommonJS module.
+
+Conditional Import に従って、import対象のモジュールの型定義ファイルの resolution-mode相当がわかれば、CJS interop の必要有無がわかる、ということだろうか...?
 
 ## エコシステム
 
