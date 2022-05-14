@@ -1,6 +1,6 @@
 # TypeScript 4.7 と Native Node.js ESM
 
-TypeScript 4.7 のRC がリリースされたので、Node.js ESM 対応の現状をまとめておく。
+TypeScript 4.7 の RC がリリースされたので、Node.js ESM 対応の現状をまとめておく。
 
 @teppeis さんの [TypeScript 4.5 以降で ESM 対応はどうなるのか？](https://zenn.dev/teppeis/articles/2021-10-typescript-45-esm) を先に読んでおくと良い。
 
@@ -77,7 +77,7 @@ Node.js が拡張子を使い分けたことに合わせて、TypeScript にも�
 
 もちろん、 `.mts` であれば package.json と関係なく前者となるし、`.cts` であれば後者。
 
-なお、 `--module commonjs` を指定した場合は、ソースコードのファイルの拡張子や package.json の `"type"` フィールドと関係なく、 Import / Export Statement は `reuiqre` / `module.exports=...` に変換されるし、 `--module exnext` であれば、.cts の Import / Export Statement は保存される。要するに、今までと同じオプションを適用させたら
+なお、 `--module commonjs` を指定した場合は、ソースコードのファイルの拡張子や package.json の `"type"` フィールドと関係なく、 Import / Export Statement は `reuiqre` / `module.exports=...` に変換されるし、 `--module exnext` であれば、.cts の Import / Export Statement は保存される。
 
 ### Module Specifier
 
@@ -104,11 +104,11 @@ TypeScript コントロールしてくれるのは、「Module Specifer に対�
 
 ### Conditional Exports と 型定義ファイルの出し分け
 
-`--module esnext` の世界でも、Pure ESM な Node.js パッケージを構成することはできた（ [sindresorhus](https://gist.github.com/sindresorhus/a39789f98801d908bbc7ff3ecc99d99c)が推しているヤツ ）。
+`--module esnext` の世界でも、Pure ESM な Node.js パッケージを構成することはできた（ [sindresorhus](https://gist.github.com/sindresorhus/a39789f98801d908bbc7ff3ecc99d99c)が推しているヤツ）。
 
 `--module node16` の世界では、ESM / CJS ファイルを混在させることができるようになり、拡張子も Node.js のルールに合わせてくれるようになった、というのがここまでの話。
 
-TypeScript 4.7 では、`.cts` ファイル(または `type: module` でないパッケージでの `.ts` )を外部に公開する際に、型定義ファイルも出し分けることができるようになっている。
+TypeScript 4.7 では、`.mts`, `.cts` ファイル(または `type: module` でないパッケージでの `.ts` )を外部に公開する際に、付随する型定義ファイルも出し分けることができるようになっている。
 
 これも Node.js の [Conditional exports feature](https://nodejs.org/api/packages.html#conditional-exports) を拡張する形になっている。
 
@@ -133,6 +133,8 @@ TypeScript 4.7 では、`.cts` ファイル(または `type: module` でない�
   }
 }
 ```
+
+`"require"` や `"import"` の各ブロックにも `"types"` フィールドを書いているところがポイント。
 
 上記のように記載することによって、ESM としてパッケージを利用するユーザーと CJS としてパッケージを利用するユーザーに別々の型定義を提供することができる。
 
@@ -201,7 +203,7 @@ import * as hoge from "hoge";
 
 このシナリオについては https://github.com/microsoft/TypeScript/issues/46334 で議論されており、方向性として「トップレベルの `types` を exports map の各 block に merge するようなことはしない」となっている。
 
-これは、Node.js における Conditional Export が*明示的に* エントリポイントを指定する機能であるため、その考え方に準じてのこと。
+これは、Node.js における Conditional Export が「明示的にエントリポイントを指定する機能」であるため、その考え方に準じてのこと。
 
 したがって、このシナリオに遭遇した場合、hoge パッケージ(依存対象側)の側で、のエントリポイントごとの型定義の場所も明示するように修正する必要が出てくる。
 
