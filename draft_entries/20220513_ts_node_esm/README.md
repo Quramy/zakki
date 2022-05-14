@@ -1,5 +1,7 @@
 # TypeScript 4.7 と Native Node.js ESM
 
+TypeScript 4.7 のRC がリリースされたので、Node.js ESM 対応の現状をまとめておく。
+
 @teppeis さんの [TypeScript 4.5 以降で ESM 対応はどうなるのか？](https://zenn.dev/teppeis/articles/2021-10-typescript-45-esm) を先に読んでおくと良い。
 
 このエントリの中でも、teppeis さんの定義した用語をそのまま用いさせてもらう。
@@ -46,7 +48,7 @@ TypeScript の Native ESM サポートについては、[4.5 Beta](https://devbl
 | import(require) するファイル | import(require) されるファイル | Static Import | Dynamic Import | require |
 | :--------------------------- | :----------------------------- | :------------ | :------------- | :------ |
 | ESM                          | ESM                            | OK            | OK             | NG      |
-| CJS                          | CJS                            | OK            | NG             | OK      |
+| CJS                          | CJS                            | NG            | NG             | OK      |
 | ESM                          | CJS                            | OK            | NG             | NG      |
 | CJS                          | ESM                            | NG            | OK             | NG      |
 
@@ -81,13 +83,13 @@ Node.js が拡張子を使い分けたことに合わせて、TypeScript にも�
 
 `import { Hoge } from "hoge"` に `"hoge"` のような「読み込みたいモジュールがどこにあるのか」の部分を Module Specifier と呼ぶ。
 
-Node.js Native ESM の世界では、以下のような拡張子省略は許容されない（TypeScript における疑似 ESM ( `--module esnext` では許容されるコード）。
+Node.js Native ESM の世界では、以下のような拡張子省略は許容されない。これは、ESM のルールではないが、Node.js ESM Loader が [WHATWG Loader Spec の Browser Loader](https://whatwg.github.io/loader/#properties-of-the-browser-loader-prototype) に追従しているため。
 
 ```js
 import "./hoge";
 ```
 
-このような拡張子省略が許容されないのは、 TypeScript の `--module node16` や `--module nodenext` の世界においても同様で、相対ファイルから Import する場合には、Module Specifier に拡張子を明記しなくてはならない。
+拡張子省略が許容されないのは、 TypeScript の `--module node16` や `--module nodenext` の世界においても同様で、相対ファイルから Import する場合には、Module Specifier に拡張子を明記しなくてはならない。
 
 ```ts
 import "./hoge.mjs"; // ./hoge.mts ではない！
@@ -95,7 +97,7 @@ import "./hoge.mjs"; // ./hoge.mts ではない！
 
 ここで重要なのは、Module Specifier に記述するのは TypeScript の拡張子ではなく **「JavaScript にトランスパイルされた後の世界における拡張子」** であること。
 
-「`"./hoge"` や `"./hoge.mts"` のように書きたい」という気持ちも一定理解できるが、これは TypeScript が「Module Sepecifer を書き換えない」というポリシーを選択しているため。
+「`"./hoge"` や `"./hoge.mts"` のように書きたい」という気持ちも一定理解できるが、これは TypeScript が[「Module Sepecifer を書き換えない」というポリシーを選択](https://github.com/microsoft/TypeScript/wiki/TypeScript-Design-Goals/53ffa9b1802cd8e18dfe4b2cd4e9ef5d4182df10#goals)しているため。
 
 TypeScript コントロールしてくれるのは、「Module Specifer に対応する TypeScript ソースコードや型定義ファイルがどこにあるのかを解決する」ことだけ。
 これを制御しているのが tsconfig における `moduleResolution` プロパティ。 実際 `--module node16` とすると裏では `--moduleResolution node16` にセットされる。
@@ -251,8 +253,7 @@ declare const x = "value";
 export default x;
 ```
 
-これらが `lib` となっていたとして、これを Native ESM からimportすると、↓のコードのCompileが通らなくてはならない。
-
+これらが `lib` となっていたとして、これを Native ESM から import すると、↓ のコードの Compile が通らなくてはならない。
 
 ```js
 /* ./index.mts */
@@ -266,7 +267,7 @@ console.log(lib.default); // <- default が必要
 
 > There isn’t always a way for TypeScript to know whether these named imports will be synthesized, but TypeScript will err on being permissive and use some heuristics when importing from a file that is definitely a CommonJS module.
 
-Conditional Import に従って、import対象のモジュールの型定義ファイルの resolution-mode相当がわかれば、CJS interop の必要有無がわかる、ということだろうか...?
+Conditional Import に従って、import 対象のモジュールの型定義ファイルの resolution-mode 相当がわかれば、CJS interop の必要有無がわかる、ということだろうか...?
 
 ## エコシステム
 
