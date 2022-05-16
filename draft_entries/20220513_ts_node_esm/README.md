@@ -285,7 +285,7 @@ https://jestjs.io/docs/28.0/ecmascript-modules
 
 TypeScript の文脈で注意すべきことは特に無いように思う。 .ts / .cts / .mts が混在しているプロジェクトであっても、結局は「拡張子に応じてモジュールの種別が決まる」というだけであるので、拡張子ごとに Transpiler の設定を適切に行えば問題ない。
 
-以下に swc と 本家 TypeScript を 使った場合の Jest 設定ファイルのの例をリンクしておく（Quramy 自身は普段は ts-jest を使っているのだけど、今回は Peer Dependencies 周りが面倒だったので諦めた）。
+以下に swc と 本家 TypeScript を 使った場合の Jest 設定ファイルの例をリンクしておく（Quramy 自身は普段は ts-jest を使っているのだけど、今回は Peer Dependencies 周りが面倒だったので諦めた）。
 
 - `@swc/jest`
   - [Jest 設定](https://github.com/Quramy/ts-node-conditional-export-example/blob/39b8656337ff593308ec64f5a8d515ed634900a3/packages/library-pkg/jest.config.mjs)
