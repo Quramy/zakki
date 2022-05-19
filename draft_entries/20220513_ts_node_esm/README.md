@@ -167,13 +167,13 @@ import type { Hoge } from "hoge" assert { "resolution-mode": "require" };
 import type { Hoge } from "hoge" assert { "resolution-mode": "import" };
 ```
 
-https://github.com/microsoft/TypeScript/issues/48644 Nightly に格下げされた経緯が書かれているが、そもそもこの Syntax が意味的に正しいのかが微妙、といった理由があるようで、十分な Feedback が得られるまでは正式版としたくない模様。
+https://github.com/microsoft/TypeScript/issues/48644 Nightly に格下げされた経緯が書かれているが、そもそもこの Syntax が意味的に正しいのかが微妙、といった理由があるようで、十分なフィードバックが得られるまでは正式版としたくない模様。
 
-### `--module node16` と foot gun
+### `--module node16` と footgun
 
 上述した「Type declaration の出し分けが可能になる」に付随して「利用しているパッケージが正しく Type declaration を出分けていないと、利用する側で不都合が生じうる」という話。
 
-具体例を考えてみる。とある npm package `hoge` が以下のように構成されていたとする。
+具体例を考えてみる。とある npm パッケージ `hoge` が以下のように構成されていたとする。
 
 ```json
 {
@@ -189,19 +189,19 @@ https://github.com/microsoft/TypeScript/issues/48644 Nightly に格下げされ�
 }
 ```
 
-この package を使っている側が、ts 4.6 までであれば、以下のコードは問題なく compile される。
+このパッケージを使っている側が、ts 4.6 までであれば、以下のコードは問題なくコンパイルできる。
 
 ```ts
 /* main.ts */
 import * as hoge from "hoge";
 ```
 
-しかし、上記のファイルを `module: "node16"` として扱おうとした場合に、以下の問題が起きる
+しかし、上記のファイルを `module: "node16"` として扱おうとした場合に、次の問題が起きる
 
 - Node.js の世界では `./lib_esm/index.mjs` は利用可能なのでランタイム上は問題ない
 - TypeScript 4.7 の世界においては `./lib_esm/index.d.mts` のファイルが存在しなければ、 `./lib_esm/index.mjs` の型定義が解決できずにエラーになる
 
-このシナリオについては https://github.com/microsoft/TypeScript/issues/46334 で議論されており、方向性として「トップレベルの `types` を exports map の各 block に merge するようなことはしない」となっている。
+このシナリオについては https://github.com/microsoft/TypeScript/issues/46334 で議論されており、方向性として「トップレベルの `types` を exports map の各ブロックにマージするようなことはしない」となっている。
 
 これは、Node.js における Conditional Export が「明示的にエントリポイントを指定する機能」であるため、その考え方に準じてのこと。
 
@@ -227,7 +227,7 @@ import * as hoge from "hoge";
 }
 ```
 
-この状況にぶち当たった場合、hoge パッケージの提供元に 修正 PR を merge してもらわねばならなくなる。もしかすると Ambient Module 宣言と前述の Import Type Statement + `"resultion-mode"` でどうにかできるかもしれないが、贔屓目で見たとしても推奨された方法ではないはず。。。
+この状況にぶち当たった場合、hoge パッケージの提供元に 修正 PR 送って取り込んでもらわねばならなくなる。もしかすると Ambient Module 宣言と前述の Import Type Statement + `"resultion-mode"` でどうにかできるかもしれないが、贔屓目で見たとしても推奨された方法ではないはず。。。
 
 逆に、**自身で Conditional Exported な Package を公開するのであれば、それぞれのエントリポイントについて `"types"` フィールドの明記と同梱を忘れてはいけない**。
 
@@ -255,7 +255,7 @@ declare const x = "value";
 export default x;
 ```
 
-これらが `lib` となっていたとして、これを Native ESM から import すると、↓ のコードの Compile が通らなくてはならない。
+これらが `lib` となっていたとして、これを Native ESM から import すると、以下のコードのコンパイルが通らなくてはならない。
 
 ```js
 /* ./index.mts */
@@ -299,4 +299,4 @@ https://github.com/TypeStrong/ts-node/issues/1007 で議論されてはいるが
 
 Description や [コメント](https://github.com/TypeStrong/ts-node/issues/1007#issuecomment-712967491) を読むと、Jest のような Experimental な Node.js の機能に頼るつもりはなさそうに見える。
 
-[対応用の PR らしきもの](https://github.com/TypeStrong/ts-node/pull/1694) は見かけたものの、しばらく Commit ないので怪しい。
+[対応用の PR らしきもの](https://github.com/TypeStrong/ts-node/pull/1694) は見かけたものの、しばらくコミットがないので怪しい。
