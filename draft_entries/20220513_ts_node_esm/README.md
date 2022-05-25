@@ -1,6 +1,6 @@
 # TypeScript 4.7 と Native Node.js ESM
 
-TypeScript 4.7 の RC がリリースされたので、Node.js ESM 対応の現状をまとめておく。
+TypeScript 4.7 がリリースされたので、Node.js ESM 対応の現状をまとめておく。
 
 @teppeis さんの [TypeScript 4.5 以降で ESM 対応はどうなるのか？](https://zenn.dev/teppeis/articles/2021-10-typescript-45-esm) を先に読んでおくと良い。
 
@@ -18,7 +18,7 @@ TypeScript としての Node.js Native ESM サポートはシンプルで、拡�
 逆に言うと、機能の大半を理解するのには Node.js の ESM 対応（mjs や cjs、package.json の `exports` プロパティなど）を押さえておく必要がある。
 
 一方で、TS + npm なパッケージ開発者がすぐに自身のパッケージを Native ESM 化できるかというと、懸念がありそう。依存パッケージの型定義周りが障壁になる可能性がある。
-また、周辺ツールなども盤石とは言い難い状況であることから、無理してまですぐに対応するほどの温度感ではないな、という温度感。
+また、周辺ツールなども盤石とは言い難い状況であることから、無理してまですぐに対応するほどではないかな、という温度感。
 
 ## TS 4.5 と TS 4.7 の差分
 
