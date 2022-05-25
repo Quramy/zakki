@@ -295,8 +295,13 @@ TypeScript の文脈で注意すべきことは特に無いように思う。 .t
 
 ### ts-node
 
-https://github.com/TypeStrong/ts-node/issues/1007 で議論されてはいるが、2022 年 5 月対応で未対応.
+[10.8.0](https://github.com/TypeStrong/ts-node/releases/tag/v10.8.0) にて、Native ESM サポートが行われている。
 
-Description や [コメント](https://github.com/TypeStrong/ts-node/issues/1007#issuecomment-712967491) を読むと、Jest のような Experimental な Node.js の機能に頼るつもりはなさそうに見える。
+https://typestrong.org/ts-node/docs/imports#native-ecmascript-modules
 
-[対応用の PR らしきもの](https://github.com/TypeStrong/ts-node/pull/1694) は見かけたものの、しばらくコミットがないので怪しい。
+`--esm` オプションを付与するか、新しく追加されている `ts-node-esm` コマンドを使えばよい。
+
+```sh
+$ ts-node --esm src/index.mts
+$ ts-node-esm src/index.mts
+```
