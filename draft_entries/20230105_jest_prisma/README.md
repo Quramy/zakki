@@ -16,7 +16,7 @@ It's not hard to test Prisma app using "real" database.
 And it's not hard to run them in your CI environment too.
 For example, if you want to test your Prisma app in GitHub Actions, you can use [service containers](https://docs.github.com/en/actions/using-containerized-services/about-service-containers#example-mapping-redis-ports).
 
-However, Docker Compose or GHA's service containers don't resolve the following issues:
+However, docker-compose or GHA's service containers don't resolve the following issues:
 
 - You should initialize DB after each test case runs. In other words, you should truncate all tables and run seeds in `beforeEach` .
 - You can not run test suites in parallel because a test suite may change DB and affect another test suite running. So you should run with Jest with `--maxWorkers=1` option.
@@ -107,7 +107,7 @@ So if your `@prisma/client` version is l.e. 4.6, add the following your `schema.
 
 ```graphql
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
   previewFeatures = ["interactiveTransaction"]
 }
 ```
