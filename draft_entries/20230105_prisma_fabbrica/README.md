@@ -1,15 +1,15 @@
 # Test your Prisma app Part 2: prisma-fabbrica, test data factory utility
 
 In the previous post, I introduced how to test Prisma app with isolated transaction via jest-prisma.
-In this post, I introduce another package, prisma-fabbrica.
+In this post, I introduce another package, prisma-fabbrica, which helps to create test data.
 
 https://github.com/Quramy/prisma-fabbrica
 
 ## Motivation
 
-You need to set up test data sufficient for each test case. Especially with integrated testing, in other words using a real database, you should insert test data as precondition.
+We need to set up test data sufficient for each test case. Especially with integrated testing, in other words using a real database, we should insert test data as precondition.
 
-For example, imagine the following Prisma schema. It represents that a `User` model has many posts and a `Post` model belongs to a user.
+For example, imagine the following Prisma schema, which represents that a `User` model has many posts and a `Post` model belongs to a user.
 
 ```graphql
 model User {
@@ -44,7 +44,7 @@ export async function updatePostTitle(postId: string, title: string) {
 }
 ```
 
-And test code for the above function is the following:
+Test code for the above function is the following:
 
 ```ts
 /* src/updatePostTitle.test.ts */
@@ -74,7 +74,7 @@ test("updatePostTitle", async () => {
 });
 ```
 
-Okay, the above test works and passes. But take careful tool at the code. It contains some useless information.
+Okay, the above test works and passes. But take careful at the code. It contains some useless information.
 The `post.create` block contains a user model fields although the test case is not interested in post's author.
 
 ```ts
@@ -95,11 +95,13 @@ await prisma.post.create({
 });
 ```
 
-I don't like to set up unneeded models (e.g. `author` in the above case) and I want to keep tests to contain necessary and sufficient information.
+The above code lines increases as the number of required fields in `User` model increases.
+
+I don't like to set up unneeded models (e.g. `author` in the above case) and I want to **keep tests to contain necessary and sufficient information**.
 
 ## Test data factory
 
-I build prisma-fabbrica inspired from factory_bot, a utility library to set up Active Record models in Ruby.
+I built prisma-fabbrica inspired from factory_bot, a utility library to set up Active Record models in Ruby.
 
 The above test code for `updatePostTitle` can be rewritten as the following using prisma-fabbrica:
 

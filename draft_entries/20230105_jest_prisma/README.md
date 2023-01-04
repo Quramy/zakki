@@ -37,7 +37,7 @@ And the same feature exists in other language. RSpec Rails in Ruby provides an o
 
 ## jest-prisma: Transaction managed by framework
 
-I want feature like these frameworks to use in Jest and Prisma. So I build an npm package:
+I want feature like these frameworks to use in Jest and Prisma. I published an npm package to achieve this:
 
 https://github.com/Quramy/jest-prisma
 
@@ -56,8 +56,8 @@ export default {
 
 You can access Prisma client instance managed by jest-prisma via `jestPrisma.cilent`.
 
-The following example has 2 test cases and they are run in sequence. See the 2nd case, "Count user".
-The case asserts `prisma.user.count()` to be zero and succeeds because that jest-prisma rolled back the 1st case which inserts a record to user table.
+The following example has 2 test cases and they are run in sequence. Look at the 2nd case, "Count user".
+This case asserts `prisma.user.count()` to be zero and succeeds because that jest-prisma rolled back the 1st case which inserts a record to user table.
 
 ```ts
 describe(UserService, () => {
