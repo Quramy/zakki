@@ -176,7 +176,9 @@ await PostFactory.create(); // Create not only post but also user
 ```ts
 // Create a user that has 2 posts
 await UserFactory({
-  posts: await PostFactory.buildList(2)
+  posts: {
+    create: await PostFactory.buildList(2)
+  }
 });
 ```
 
