@@ -2,20 +2,22 @@
 
 ## はじめに
 
-先日 @takepepe さんとフロントエンドのテストについてパネルディスカッションする機会があり、その際に一瞬だけ Next.js App Router のテストの話題になりました。
+先日 @takepepe さんと [フロントエンドのテストについてパネルディスカッションする機会](https://findy.connpass.com/event/290730/) があり、その際に一瞬だけ Next.js App Router のテストの話題になりました。
 
-僕自身としても最近 Next.js App Router と格闘する日々を送っており、タイムリーな話題であったのですが、イベントの場では時間の都合もあり、ほとんど語らず仕舞いとなったため、App Router、特に React Server Component のテストについて、最近考えていたことを吐き出していきます。
+僕自身、最近 Next.js App Router と格闘する日々を送っておりタイムリーな話題であったのですが、イベントの場では時間の都合もありほとんど語らず仕舞いとなってしまいました。
+
+そこで、今回の記事は App Router、特に React Server Component のテストについて、最近考えていたことを吐き出していこうと思います。
 
 ## 要旨
 
-このエントリでは「2023 年 8 月現在で利用可能なツール群で、どのように React Server Component (以下 RSC) をテストしていくのが妥当か」を書いていきます。
+この記事では「2023 年 8 月現在で利用可能なツール群で、どのように React Server Component (以下 RSC) をテストしていくのが妥当か」を書いていきます。
 
-ツール群は主に下記を指します。
+ここで、ツール群とは主に下記を指します。
 
 - `@testing-library/react`
 - `@storybook/react`
 
-以降で詳細を記載していきますが、先んじて要約を書いておくと、以下のとおりです。
+以降で詳細を記載していきますが、先んじて要約を書いておくと以下のとおりです。
 
 - Server Component を動作させて、結果の DOM やインタラクションを一気通貫でインテグレーションテストすることは現状では難しい
 - サーバー側の処理の妥当性と、DOM 描画・操作の妥当性は、それぞれ別のユニットテストとして分離する
@@ -24,11 +26,11 @@
 ### この記事で書かないこと
 
 - RSC や Next.js App Router の概要
-- Jest や Testing Library 、 Storybook などのセットアップ方法や API 利用方法
+- Jest や Testing Library, Storybook などのセットアップ方法や API 利用方法
 
 ## 出発点
 
-まずは、このエントリで以降テストの題材として、以下の `ArtistPage` Component を考えていきましょう。
+まずは、このエントリで以降テストの題材として以下の `ArtistPage` コンポーネントを考えていきましょう。
 
 ```tsx
 /* src/app/artists/[artistId]/page.tsx */
@@ -62,15 +64,15 @@ export default ArtistPage;
 
 ![](artistpage.png)
 
-URL から取得できる ID に紐づいたアーティストの詳細ページのイメージです。
+URL から取得できる ID に紐づいたアーティストの詳細を表示するページです。
 
-`ArtistPage` Component は、サーバー上での非同期処理を含む Server Component (SC) であり、このサンプルでは、データベースからの主キー検索を行うだけの簡単な実装です。
+`ArtistPage` コンポーネントは、サーバー上での非同期処理を含む Server Component (SC) であり、このサンプルでは、データベースからの主キー検索を行うだけの簡単な実装です。
 
 ## テストの問題
 
 ### `@testing-library/react` の場合
 
-続いて、上記の `ArtistPage` Component のテストを行うことを考えてみます。
+続いて、上記の `ArtistPage` コンポーネントのテストについて考えてみます。
 
 「SC の描画結果として、対象アーティストの名前が含まれること」というケースを仮定すると以下のような感じでしょうか。
 
@@ -103,32 +105,15 @@ https://github.com/testing-library/react-testing-library/issues/1209
 
 「画面の描画結果を確認したい」という文脈では Storybook も非同期コンポーネントを描画することはできません。
 
-```tsx
-/* src/app/artists/[artistId]/page.stories.tsx */
+https://github.com/storybookjs/storybook/issues/21540
 
-import type { Meta, StoryObj } from '@storybook/react'
-
-import { ArtistPage } from './page'
-
-export default {
-  title: 'ArtistPage',
-  component: ArtistPage,
-} satisfies Meta
-
-type Story = StoryObj<typeof ArtistPage>
-
-export const Default = {
-  args: {
-    params: {
-      artistId: 'abcdefg',
-    },
-  },
-} satisfies Story
-```
+もっとも、今回のような DB にアクセスするような SC をブラウザで直接動かせるようにしろ、というのが大分無理な話な気もしますが。。
 
 ## 解決策: Presentation と Container の分離
 
 testing-library (jsdom) にせよ、Storybook にせよ、DOM が動作する環境を利用する前提でのツールであることを考えると、「サーバー側で動作する」非同期コンポーネントが動作しないのは、それはそう、という気がしてくるものです。
+
+そこで、テスト対象たる `ArtistPage` コンポーネントから、「サーバー側でないと動作しない部分」と「サーバーでなくても動作する部分」に分離させていきます。ご存知 Container / Presentation Separation というやつです。
 
 ```tsx
 /* src/app/artists/[artistId]/page.tsx */
@@ -161,6 +146,7 @@ type Props = {
   };
 };
 
+// ここが Container コンポーネント
 export async function ArtistPage({ params: { artistId } }: Props) {
   const artist = await prisma.artist.findUnique({ where: { id: artistId } });
 
@@ -175,13 +161,11 @@ export async function ArtistPage({ params: { artistId } }: Props) {
 export default ArtistPage;
 ```
 
-上記の `ArtistPagePresentation` が Presentational なコンポーネントに相当します。
-この `ArtistPagePresentation` は、Next.js のランタイムで動作する際は SC として動作しますが、もはや非同期関数ではなく Props を受け取って JSX Element を返すだけの関数です。SC からも CC からも利用可能なコンポーネントです。
-（余談ですが、この「SC からも CC からも利用可能なコンポーネント」というのを何と呼べば良いのか悩んでいます。 Shared Component とか Universal Component とか...）
+上記の `ArtistPagePresentation` が Presentational なコンポーネントに相当します。この `ArtistPagePresentation` は、Next.js のランタイムで動作する際は SC として動作しますが、もはや非同期関数ではなく Props を受け取って JSX Element を返すだけの関数です。SC からも CC からも利用可能なコンポーネントです (余談ですが、この「SC からも CC からも利用可能なコンポーネント」というのを何と呼べば良いのか悩んでいます。 Shared Component とか Universal Component とか...) 。
 
 CC からも利用可能なコンポーネントであるのであれば、それは jsdom や Storybook などの、CC の描画を確認できるツールの上に載せることができます。
 
-`@testing-library/react` であれば、以下です:
+`@testing-library/react` であれば以下です:
 
 ```tsx
 /* src/app/artists/[artistId]/page.test.tsx */
@@ -240,13 +224,17 @@ export const Default = {
 続いて、Container として分離したサーバー側の処理のテストについて考えていきます。
 
 ```tsx
+/* src/app/artists/[artistId]/page.tsx */
+
+/* 中略 */
+
 type Props = {
   readonly params: {
     readonly artistId: string;
   };
 };
 
-// これが Container Component
+// ここが Container コンポーネント
 export async function ArtistPage({ params: { artistId } }: Props) {
   const artist = await prisma.artist.findUnique({ where: { id: artistId } });
 
@@ -258,7 +246,7 @@ export async function ArtistPage({ params: { artistId } }: Props) {
 }
 ```
 
-ここで `ArtistPage` コンポーネントは以下を行っています。これらを (React Component としてではなく) 通常の非同期関数のテストとして捉えればテストを記述するのはさして難しくありません。
+ここで `ArtistPage` コンポーネントは次の処理を行っています。これらを (React Component としてではなく) 通常の非同期関数のテストとして捉えればテストを記述するのはさして難しくありません。
 
 - アーティスト ID が DB に存在しなければ `notFound` を実行して 404 ページを描画
 - アーティスト ID が DB に存在していれば、アーティストデータを `ArtistPagePresentation` に受け渡す
@@ -306,7 +294,7 @@ describe(ArtistPage, () => {
 })
 ```
 
-jsdom ではないことを明示したかったため、テスト Suite のファイルを `page.server.test.tsx` として別のファイルにしています。
+ここで、`ArtistPage` コンポーネントの実行環境が jsdom ではないことを明示したかったため、テスト Suite のファイルを `page.server.test.tsx` として別のファイルにしています。
 
 なお、 `@quramy/jest-prisma-node` や `@quramy/prisma-fabbrica` など怪しげな import 文が登場していますが、これは DB と繋いだテストを記述するためのもので、やはり React とは本質的に無関係です。詳細は [Integrated testing with Prisma](https://quramy.medium.com/integrated-testing-with-prisma-4bc73404d027) を読んでください。これはダイレクトマーケティングというやつです。
 
@@ -314,7 +302,7 @@ jsdom ではないことを明示したかったため、テスト Suite のフ�
 
 まず、`notFound` など Next.js が用意している関数が呼び出されることを確認するには `jest.fn()` でモックすればよいです。
 
-また、正常系であるについては、 `ArtistPage` が行っている `return <ArtistPagePresentation artist={artist} />` の部分は JSX における `createElement` 関数の呼び出しですので、以下のオブジェクトが jest のテストケースに返却されるため、このオブジェクトをそのまま検証すれば、モックを用意するまでもなく「 `ArtistPagePresentation` に取得したアーティストデータが Props として渡されていること」を確認できます。
+また、正常系のアーティスト情報の描画については、 `ArtistPage` が行っている `return <ArtistPagePresentation artist={artist} />` の部分が JSX における `createElement` 関数の呼び出しであることを思い出せば、こちらもさして難しくありません。以下のオブジェクトが Jest のテストケースに返却されるため、このオブジェクトをそのまま検証すれば、モックを用意するまでもなく「 `ArtistPagePresentation` に取得したアーティストデータが Props として渡されていること」を確認できます。
 
 ```js
 {
@@ -331,14 +319,16 @@ jsdom ではないことを明示したかったため、テスト Suite のフ�
 
 ここからは、ある非同期コンポーネントがさらに別の非同期コンポーネントを内包しているパターンについて考えていきます。
 
-![](add_albums.png)
-
 例として、ここまで見てきた `ArtistPage` コンポーネントに以下の機能を追加してみます。
 
 - `<ArtistPage />` には、当該アーティストがリリースしたアルバム情報が表示される
 - アーティストのアルバム情報は、アーティスト詳細情報が取得されてからでないと取得できないものとする
 
 ```tsx
+/* src/app/artists/[artistId]/page.tsx */
+
+/* 中略 */
+
 export function ArtistPagePresentation({
   artist: { id, name, biography },
 }: PresentationProps) {
@@ -352,7 +342,11 @@ export function ArtistPagePresentation({
 }
 ```
 
-`Albums` コンポーネントも非同期コンポーネントであるため、`ArtistPage` コンポーネントで行ったのと同じ様に、Presentation / Container に分離して作成します。
+下図が実行イメージです。
+
+![](add_albums.png)
+
+追加する `Albums` コンポーネントも非同期コンポーネントであるため、`ArtistPage` コンポーネントで行ったのと同じ様に、Presentation / Container に分離して作成します。
 
 ```tsx
 /* src/app/artists/[artistId]/Albums.tsx */
@@ -389,7 +383,7 @@ export async function Albums({ artistId }: Props) {
 }
 ```
 
-お察しの通り、`Albums` という非同期コンポーネントを組み込んでしまったが最後、`ArtistPagePresentation` は再び「テストできないコンポーネント」になってしまいます。
+さて、お察しの通り `Albums` という非同期コンポーネントを組み込んでしまったが最後、`ArtistPagePresentation` は再び「テストできないコンポーネント」になってしまいます。
 
 Next.js で `ArtistPage` を動作させる場合、下図のように Container コンポーネントが多段階となるわけですが、中間に Presentation -> Container(非同期) -> Presentation という React のコンポーネント階層が含まれてしまうためです。
 
@@ -401,8 +395,7 @@ Next.js で `ArtistPage` を動作させる場合、下図のように Container
 また、このとき、デフォルトでは アルバム情報の Presentation である `AlbumsPresentation` を利用するようにしておきます。
 
 ```tsx
-import { notFound } from "next/navigation";
-import { prisma } from "@/prismaClient";
+/* src/app/artists/[artistId]/page.tsx */
 
 import { Albums, AlbumsPresentation } from "./Albums";
 
@@ -428,11 +421,17 @@ export function ArtistPagePresentation({
     </>
   );
 }
+
+/* 以下略 */
 ```
 
 アルバム情報の Container コンポーネントを受け渡す処理は、親である `ArtistPage` の Container コンポーネントでやらせるようにしておきます。
 
 ```tsx
+/* src/app/artists/[artistId]/page.tsx */
+
+/* 中略 */
+
 type Props = {
   readonly params: {
     readonly artistId: string;
@@ -453,8 +452,6 @@ export async function ArtistPage({ params: { artistId } }: Props) {
     />
   );
 }
-
-export default ArtistPage;
 ```
 
 これで、アーティスト詳細の画面の React Component 階層について、以下を実現できたことになります。
@@ -465,6 +462,10 @@ export default ArtistPage;
 例えば Storybook で「アルバム情報まで描画されている画面を確認したい」となれば、以下のようにすれば良いでしょう。
 
 ```tsx
+/* src/app/artists/[artistId]/page.stories.tsx */
+
+/* 中略 */
+
 export const Default = {
   args: {
     artist: {
@@ -503,16 +504,22 @@ Container / Presentation パターンそのものは、特に目新しい話で�
 
 `@testing-library/react` や `@storybook/react` が今後どのように RSC を扱っていくかは、この記事を書いている時点では割と不透明ではありますが、現状の武器だけでもそこそこには戦える、という所感です。
 
+なお、この記事で用いたサンプルコードは以下のレポジトリに格納してあります。
+
+https://github.com/Quramy/server-components-with-container-presentation
+
 ## おまけ: Streaming
 
-現状の `ArtistPage` コンポーネントでは、以下 2 つの非同期処理が逐次的に行われる、いわゆるウォーターフォールになっています。
+今回例に挙げた `ArtistPage` コンポーネントでは、以下 2 つの非同期処理が逐次的に行われる、いわゆるウォーターフォールになっています。
 
 1. アーティスト詳細を取得する非同期処理
 1. アーティストのアルバム情報を取得する非同期処理
 
-先頭の非同期処理が完了した時点でユーザーに HTML を返すようなアプリケーションにすることも可能です。
+このようなウォーターフォールが含まれるときは、先頭の非同期処理が完了した時点でユーザーに描画結果を返すようなアプリケーションにすることも可能です。
 
 ```tsx
+/* src/app/artists/[artistId]/page.tsx */
+
 export function ArtistPagePresentation({
   artist: { name, biography },
   albumsProps,
@@ -543,6 +550,10 @@ export function ArtistPagePresentation({
 すでに `albumsNode` として、`ArtistPagePresentation` の外側から「どのようにアルバム情報を描画するのか」を注入できるようにしてあるため、ここに「完了していない状態」を突っ込むだけで、このようなテストも記述できます。
 
 ```tsx
+/* src/app/artists/[artistId]/page.test.tsx */
+
+/* 中略 */
+
 function Suspended() {
   throw new Promise(() => null);
   return null;
