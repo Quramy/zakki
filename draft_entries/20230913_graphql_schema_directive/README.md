@@ -3,7 +3,9 @@
 Hi everyone.
 
 My name is Quramy.
-And, I am a web application developer.
+And, I am a web application developer loving GraphQL.
+
+It's query about me.
 
 # p3
 
@@ -11,7 +13,7 @@ Today, I talk about how to explain contextual precondition of GraphQL schema.
 
 # p4
 
-I believe that a GraphQL schema works as a contract between server and client.
+I think that a GraphQL schema works as a contract between server and client.
 
 For server-side, schema should implement to resolve query result for valid operations.
 And for client-side, client applications should send operations defined by schema.
@@ -25,7 +27,7 @@ And this is pasted from Wikipedia...
 
 DbC has these principals, Preconditions and Postconditions.
 
-Whenever client applications guarantees preconditions, sever should provide postconditions.
+Whenever client application guarantees preconditions, sever provides postconditions.
 
 # p6
 
@@ -55,7 +57,7 @@ Object resolved by parent, field arguments, context, and metadata.
 
 So, this is today's problem,,,
 
-How to give precondition for the 3rd argument context?
+How to give precondition for the 3rd argument, context?
 
 # p9
 
@@ -91,12 +93,14 @@ If you use graphql ruby, you can define directives like this (pointing).
 
 And we can use AST Analyzer class to check the directive's precondition like this (pointing).
 
+The `on_enter_field` method is called back for each field in the operation, and executes the logic corresponding to the directive.
+
 # p15
 
-The directive separates the assertion logic from the resolver implementation. That is separation of concern.
+The directive separates the assertion logic from the resolver implementation, which is separation of concern.
 In other words, we can recognize the directive assertion logic as an aspect.
 
-So, we only annotate this directive if we add more fields which needs the same precondition, because aspect is reusable.
+So, we can annotate this directive if we add more fields which needs the same precondition, because aspect is reusable.
 
 # p16
 
