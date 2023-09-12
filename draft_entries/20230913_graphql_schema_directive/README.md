@@ -5,7 +5,7 @@ Hi everyone.
 My name is Quramy.
 And, I am a web application developer loving GraphQL.
 
-It's query about me.
+It's a query about me.
 
 # p3
 
@@ -77,7 +77,7 @@ And, if these preconditions are established, the postconditions get more sharp a
 
 Here are two schema examples, the first is defensive and the second is offensive.
 
-The offensive schema can provide strict string because the context is guaranteed to execute by the precondition.
+The offensive schema can provide strict string because the context is guaranteed to execute by this precondition.
 
 # p12
 
