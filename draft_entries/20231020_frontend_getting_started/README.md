@@ -23,86 +23,77 @@
 
 これを済ませておかないと、「複数人で開発を開始するのが難しい」という系統に絞って考える。
 
+実際にフロントエンドを開発していくメンバー同士でワイワイと相談しながら進めていくとよい。
+
 質が悪いのは、ずーっとライブラリの選定だったり、lint のルールを議論し続けて何も開発が進まないような状況に陥ってしまうこと。
 全部を決めきる、準備しきるのは不可能なので、作りたい画面の特性に合わせて取捨選択をすること。
 (e.g. 回遊閲覧がメインのサイトであれば、Form や更新系処理の検討は後回しにする)
 
-- ライブラリの選定, インストール
-  - お約束系:
-    - TypeScript, prettier, ESLint あたり
-      - この段階で lint のルールについてごちゃごちゃ言っても時間の無駄間があるので、 standard 系の軽めのやつを入れておしまいにしておく
-      - 場合によっては Stylelint とかも
-  - CSS の書き方を決める
-    - CSS in JS or CSS Modules なのか、tailwind を使うのか、のような部分
-      - Zero Runtime 系の場合、Meta Framework が用意している Build 周りと親和するかも考慮点
-    - 非 atomic css の場合、デザイントークンの管理方法も考えるべき
-  - Component UI ライブラリ (Material UI とかそういう系)
-    - ちゃんとデザイナーが Sketch や Figma で VD を用意してくれているのであれば、自前で CSS を書いてしまえばよいと思っている
-  - State Management
-    - Redux とかそういう部分
-      - とはいえ、2023 年にもなって Redux を新規に選定することはほぼないはず
-    - Atomic State Management なライブラリを検討する方がよい
-      - Recoil は非アクティブなため、リスク高い
-  - Form ライブラリ
-    - React の場合、RHF(react-hook-form) 一強？
-    - RHF だけでなく、resolver (e.g. zod) も検討しておく
-  - API 通信方式
-    - ここで言っているのは、ブラウザ - Node.js 間の通信ではなく、フロントエンド - バックエンド通信, チームや開発言語を跨いで IDL が必要になる箇所のこと
-    - OpenAPI の場合
-      - yaml をフロントエンドが書くのか、バックエンドが書くのかによって大きく異なる
-      - バックエンドが API 定義を書く場合、openapi-genenerator の設定を行う
-      - フロントエンドが API 定義を書く場合、YAML を生成するための TypeScript と親和するツールを用意する(e.g. zodios)
-    - GraphQL の場合
-      - ランタイムの選定: Apollo Client なのか urql なのか
-      - SDL を引っ張ってきて、TypeScript Client 生成を行えるようにする (e.g. graphql-codegen)
-    - gRPC の場合
-      - やったことないから知らない
-    - スタブサーバー
-      - バックエンド API を叩くのが面倒、並行開発なのでまだ存在しない、のような場合に検討する
-        - そもそもローカルで普通にバックエンド API を動作させた方が楽なのであれば、そっちを使えばよい
-      - graphql-mock や MSW を BFF に仕込む、など
-  - Component カタログ
-    - 実質 Storybook 以外の選択肢が無い
-  - テスト関係
-    - 最低限の Component Unit Test が書けるくらいのセットアップを事前に済ませておくと楽
-    - jest, jest-environment-jsdom, testing-lib, のインストール及び、global な stub の設定など(e.g. Next Router)
-- ディレクトリ構成
-  - 基本的には選択した Meta Framework の構成に従うようにする
-  - 規模が大きめの場合、NPM workspaces の利用も検討する
-    - ビルドが難しくなりがちなので、trade off も考慮する
-  - Atomic Design を採用しているのであれば、共通コンポーネントディレクトリをどう切るのか、などを考える
-  - `utils` のような名前のディレクトリを切ってしまうと将来のゴミ箱になるので、名前はちゃんとかんがえるべき
-  - 先に決めておくと楽な箇所
-    - ただの関数群: e.g. `src/functions`
-    - ライブラリ用グルーコード. Storybook の Decorator や、独自 Redux Middleware: e.g. `src/support/storybook`, `src/support/redux`
-- Scaffold
-  - hygen や schematics など
-  - Component
-    - CSS, Storybook, test に何を使うか、及びディレクトリ構成の大まかな検討が完了していれば、Component を自動生成するようにしておく
-  - API Client
-    - 自分で組むことは無いので、Open API Generator や GraphQL Codegen などの設定と同じ意味
-- PoC の作成. 各種ライブラリのセットアップと並行して、各アプリケーション処理方式が想定通り成り立っているかを試していく. いわゆるサンプル実装.
-  - API 通信について、正常系だけでなく、非正常系のハンドリング方法も考えておくこと
-    - Loading Status はどこから取得するのか, Suspense 使うのか, ...
-    - エラーハンドリング は後回しになりがちだが、後から詳細な要件が出てきても改修しやすい仕組み(共通的なエラーハンドリングインターセプタ系統）を噛ませられるようになっているかどうか, ...
-  - (SSR を採用している場合)
-    - Client Site Routing と Server Side
-    - API やその結果の Client State の初期値がどう hydrate されるのかを検証・理解しておく
+### ライブラリの選定, インストール
 
-## BFF 周りの基盤選定
+package.json に Dependency 追加したり、`.xxxrc` や `xxx.config.js` を作成していく作業。
 
-BFF(Backend For Frontend) をフロントエンドで開発・運用する場合に考えること
+- お約束系:
+  - TypeScript, prettier, ESLint あたり
+    - この段階で lint のルールについてごちゃごちゃ言っても時間の無駄間があるので、 standard 系の軽めのやつを入れておしまいにしておく
+    - 場合によっては Stylelint とかも
+- Styling
+  - CSS in JS or CSS Modules なのか、tailwind を使うのか、のような部分
+    - Zero Runtime 系の場合、Meta Framework が用意している Build 周りと親和するかも考慮点
+  - 非 atomic css の場合、デザイントークンの管理方法も考えるべき
+- Component UI ライブラリ (Material UI とかそういう系)
+  - ちゃんとデザイナーが Sketch や Figma で VD を用意してくれているのであれば、自前で CSS を書いてしまえばよいと思っている
+- State Management
+  - Redux とかそういう部分
+    - とはいえ、2023 年にもなって Redux を新規に選定することはほぼないはず
+  - Atomic State Management なライブラリを検討する方がよい
+    - Recoil は非アクティブなため、リスク高い
+- Form ライブラリ
+  - React の場合、RHF(react-hook-form) 一強？
+  - RHF だけでなく、resolver (e.g. zod) も検討しておく
+- API 通信方式
+  - ここで言っているのは、ブラウザ - Node.js 間の通信ではなく、フロントエンド - バックエンド通信, チームや開発言語を跨いで IDL が必要になる箇所のこと
+  - OpenAPI の場合
+    - yaml をフロントエンドが書くのか、バックエンドが書くのかによって大きく異なる
+    - バックエンドが API 定義を書く場合、openapi-genenerator の設定を行う
+    - フロントエンドが API 定義を書く場合、YAML を生成するための TypeScript と親和するツールを用意する(e.g. zodios)
+  - GraphQL の場合
+    - ランタイムの選定: Apollo Client なのか urql なのか
+    - SDL を引っ張ってきて、TypeScript Client 生成を行えるようにする (e.g. graphql-codegen)
+  - gRPC の場合
+    - やったことないから知らない
+  - スタブサーバー
+    - バックエンド API を叩くのが面倒、並行開発なのでまだ存在しない、のような場合に検討する
+      - そもそもローカルで普通にバックエンド API を動作させた方が楽なのであれば、そっちを使えばよい
+    - graphql-mock や MSW を BFF に仕込む、など
+- Component カタログ
+  - 実質 Storybook 以外の選択肢が無い
+- テスト関係
+  - 最低限の Component Unit Test が書けるくらいのセットアップを事前に済ませておくと楽
+  - jest, jest-environment-jsdom, testing-lib のインストール及び、global な stub の設定など(e.g. Next Router)
 
-- 環境変数の取り扱い
-  - Server Side に留めるもの (各種 Secret や Backend Service の URL)と、ブラウザまで露出させるべきもの (インターネットから見たサービスの FQDN など) を分別して管理できるようにしておく
-- セッション関連
-  - 大概が認可とセットになる
-  - Redis / DynamoDB などの middleware と結合する箇所の設定
-    - express-session や next-session など
-- ロギング
-  - ローカル開発時以外は構造化ログで出力しておく、など実行環境に合わせてロギングミドルウェア(pino や morgan) の設定を仕込む
+### ディレクトリ構成
 
-## CSS 関連
+基本的には選択した Meta Framework の構成に従うようにする
+
+- 規模が大きめの場合、NPM workspaces の利用も検討する
+  - ビルドが難しくなりがちなので、trade off も考慮する
+- Atomic Design を採用しているのであれば、共通コンポーネントディレクトリをどう切るのか、などを考える
+- `utils` のような名前のディレクトリを切ってしまうと将来のゴミ箱になるので、名前はちゃんとかんがえるべき
+- 先に決めておくと楽な箇所
+  - ただの関数群: e.g. `src/functions`
+  - ライブラリ用グルーコード. Storybook の Decorator や、独自 Redux Middleware: e.g. `src/support/storybook`, `src/support/redux`
+
+### Scaffold
+
+hygen や schematics などのツールでチームメンバが初動しやすいようにしておく。
+
+- Component
+  - CSS, Storybook, test に何を使うか、及びディレクトリ構成の大まかな検討が完了していれば、Component を自動生成するようにしておく
+- API Client
+  - 自分で組むことは無いので、Open API Generator や GraphQL Codegen などの設定と同じ意味
+
+### CSS 関連
 
 プロジェクトが走り出してしまうと手を出しにくい部分は以下.
 
@@ -120,6 +111,30 @@ BFF(Backend For Frontend) をフロントエンドで開発・運用する場合
     - CSS Modules の場合、 Custom Media 用の PostCSS Plugin を設定しておく
 - rem v.s. px どっちを決める
   - 長さに限らず、標準で用いる単位は ある程度 Stylelint で縛っておくとよい
+
+### PoC の作成
+
+各種ライブラリのセットアップと並行して、各アプリケーション処理方式が想定通り成り立っているかを試していく. いわゆるサンプル実装.
+
+- API 通信について、正常系だけでなく、非正常系のハンドリング方法も考えておくこと
+  - Loading Status はどこから取得するのか, Suspense 使うのか, ...
+  - エラーハンドリング は後回しになりがちだが、後から詳細な要件が出てきても改修しやすい仕組み(共通的なエラーハンドリングインターセプタ系統）を噛ませられるようになっているかどうか, ...
+- (SSR を採用している場合)
+  - Client Site Routing と Server Side
+  - API やその結果の Client State の初期値がどう hydrate されるのかを検証・理解しておく
+
+## BFF 周りの基盤選定
+
+BFF(Backend For Frontend) をフロントエンドで開発・運用する場合に考えること
+
+- 環境変数の取り扱い
+  - Server Side に留めるもの (各種 Secret や Backend Service の URL)と、ブラウザまで露出させるべきもの (インターネットから見たサービスの FQDN など) を分別して管理できるようにしておく
+- セッション関連
+  - 大概が認可とセットになる
+  - Redis / DynamoDB などの middleware と結合する箇所の設定
+    - express-session や next-session など
+- ロギング
+  - ローカル開発時以外は構造化ログで出力しておく、など実行環境に合わせてロギングミドルウェア(pino や morgan) の設定を仕込む
 
 ## Working Agreement
 
