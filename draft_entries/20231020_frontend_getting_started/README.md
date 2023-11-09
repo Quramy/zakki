@@ -120,7 +120,7 @@ hygen や schematics などのツールでチームメンバが初動しやす�
   - Loading Status はどこから取得するのか, Suspense 使うのか, ...
   - エラーハンドリング は後回しになりがちだが、後から詳細な要件が出てきても改修しやすい仕組み(共通的なエラーハンドリングインターセプタ系統）を噛ませられるようになっているかどうか, ...
 - (SSR を採用している場合)
-  - Client Site Routing と Server Side
+  - Client Site Routing と Server Side Rendering におけるデータ取得経路の違いを整理・理解しておく
   - API やその結果の Client State の初期値がどう hydrate されるのかを検証・理解しておく
 
 ## BFF 周りの基盤選定
