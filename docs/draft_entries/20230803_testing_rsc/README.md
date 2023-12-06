@@ -109,6 +109,8 @@ https://github.com/storybookjs/storybook/issues/21540
 
 もっとも、今回のような DB にアクセスするような SC をブラウザで直接動かせるようにしろ、というのが大分無理な話な気もしますが。。
 
+_2023.12.06 上記の issue がクローズされているため、本エントリの末尾に自分の見解を追記しました。_
+
 ## 解決策: Presentation と Container の分離
 
 testing-library (jsdom) にせよ、Storybook にせよ、DOM が動作する環境を利用する前提でのツールであることを考えると、「サーバー側で動作する」非同期コンポーネントが動作しないのは、それはそう、という気がしてくるものです。
@@ -571,3 +573,28 @@ describe(ArtistPagePresentation, () => {
   });
 });
 ```
+
+## 2023.12.6 追記 Storybook の RSC 対応について
+
+Storybook v8 から `experimentalNextRSC` というフラグが利用可能になっています。
+
+https://github.com/storybookjs/storybook/pull/25091
+
+このフラグを有効にすると、React.Suspense による Decorator が自動で挿入される仕掛けです。
+
+```jsx
+export default {
+  component: MyServerComponent,
+  decorators: [(Story) => <Suspense><Story /><Suspense />]
+}
+```
+
+本来は Async なコンポーネントはサーバーサイドでのみの動作を想定しているはずですが、上記がなぜ正常に動くのかピンと来ていません。
+
+https://react.dev/blog/2023/03/22/react-labs-what-we-have-been-working-on-march-2023#react-server-components
+
+動作原理もさることながら「Server Side での動作を前提とした Component を無理やりブラウザで動作させる」というアプローチであるため、どこまで実用に耐えられるのか、疑問符がつくところです。
+
+たとえばこの記事で題材にあげているような、DB アクセスを含む非同期コンポーネントを直接 Storybook で動作させようものなら Prisma のレイヤをごそっとスタブに差し替える必要が生じます。
+
+これは個人的な意見ですが、 Storybook v8 が出ても、自分ではこの `experimentalNextRSC` は有効にはせずに、Presentation / Container の分離を採用すると思っています。
