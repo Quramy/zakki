@@ -59,7 +59,7 @@ type Query {
 ```
 
 GraphQL クライアントにとって、クエリからの型生成は必須と言ってよい存在ですが、Semantic Non Null なフィールドに対するクエリの型はどうすればよいのでしょう？
-実のところ、僕自身が https://github.com/Quramy/ts-graphql-plugin にて型生成器をメンテしている都合上、一番気になるのは型生成への影響です。
+僕自身が https://github.com/Quramy/ts-graphql-plugin にて型生成器をメンテしている都合上、個人的にはクライアントの型やコード生成周りへの影響は気になるところです。
 
 ```graphql
 fragment HogeFragment on Hoge {
