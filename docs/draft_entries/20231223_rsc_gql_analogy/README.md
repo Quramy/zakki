@@ -1,8 +1,8 @@
 # React Server Components と GraphQL のアナロジー
 
-Next.js の App Router が安定版となり、React Server Components (以下 RSC) が実プロダクトで利用できるようになってきた。
+Next.js の App Router が安定版となり、React Server Components (以下 RSC) を実際に試す環境が整ってきた。
 
-実際、今年はやれどこそこのプロダクトが App Router を採用しただのやっぱり捨てだのといった話題が尽きなかったように思う。
+実際、今年はやれどこそこのプロダクトが Next.js を採用しただのやっぱり捨てだのといった話題が尽きなかったように思う。
 
 かくいう自分自身も、今年は App Router の案件に取り組んで RSC と格闘する日々を送っていた。
 
