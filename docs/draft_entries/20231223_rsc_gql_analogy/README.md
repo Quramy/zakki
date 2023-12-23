@@ -56,6 +56,10 @@ RSC における「Server Component がネイティブに非同期処理を行�
 今までだって、許されるのであればページのてっぺんではなく、末端となる Component から fetch を飛ばしたかったが、ブラウザからインターネットを跨いで実行しようものなら、とんでもないレイテンシになるので避けていただけのことだ。
 同じネットワーク内のすぐそこに、バックエンドの API であったり RDB がいる環境では、Node.js 内の SC から見た遅延なぞ高が知れているのだから、気にせずに実行すればいいのだ。
 
+これについては @koichk さんの投稿にある図がわかりやすいので、引用しておく。
+
+https://x.com/koichik/status/1738200094191784102?s=20
+
 ## GraphQL と Relay
 
 ところで RSC とは別のアプローチで「自律分散なデータ取得」を頑張って実現していたフレームワークがある。GraphQL + Relay だ。
@@ -73,7 +77,7 @@ Relay (GraphQL) の場合、Fragment をかき集めて完成する Query がイ
 
 GraphQL Server (BFF) が、Query を受け付けたあとは、Resolver が再帰的に呼び出されて Fragment の末端までデータ取得が行われる。
 
-Resolver が再帰的にデータを作り出していく挙動というのは、RSC においてネストした SC が次々に描画されていく様子とかなり似ていると思っているので、長くなってしまうがコードで説明していく。
+Resolver が再帰的にデータを作り出していく挙動というのは、RSC においてネストした SC が次々に描画されていく様子とかなり似ていると思っているので、長くなってしまうがコードで説明していく。GraphQL 興味ない、という人は読み飛ばしてくれて構わないです。
 
 GraphQL の例では毎度おなじみのブログ投稿サービスの Schema を例にする。
 
@@ -95,7 +99,7 @@ type Query {
 }
 ```
 
-この Schema に対する実装は以下のようにかける。
+この Schema を TypeScript で実装すると次のようになる。
 
 ```ts
 import { createSchema } from "graphql-yoga";
@@ -134,11 +138,11 @@ declare function getUserById(id: string): Promise<null | {
 }>;
 ```
 
-GraphQL Resolver の特徴は「末端のことは末端の Resolver に任せる」という点にある。上記の例でいうと、`Query.popularPosts` Resolver は末端側である `author` を直接解決しない。
+GraphQL Resolver の特徴は「末端のことは末端の Resolver に任せる」という点にある。上記の例でいうと、`Query.popularPosts` Resolver は末端側である `Post.author`(User) のフィールドを直接解決しない。
 
 `Post.author` Resolver が、親 Resolver から受け取った user id を使って、自分自身で User 情報を解決している。ここも「自律分散なデータ取得」だ。
 
-この Resolver の設計原則については @mtsmfm の「孫煩悩アンチパターン」という言葉が好きなので紹介しておく。
+この Resolver の設計原則については @mtsmfm さんの「孫煩悩アンチパターン」という言葉が好きなので紹介しておく。
 
 https://qiita.com/mtsmfm/items/efa6c023bfc3d4c4df9e
 
@@ -187,6 +191,8 @@ export default function User({ userKey }: { userKey: User_userFragment$key }) {
   );
 }
 ```
+
+昔は `useFragment` の代わりに `Relay.createContainer` という HoC だったりしたけれど、Relay は原初から一貫して Fragment を一級市民として扱っていた。
 
 ## RSC
 
@@ -263,5 +269,6 @@ N + 1 やパフォーマンスの話を上でしたけど、僕自身が GraphQL
 
 ## おわりに
 
-例によって、ふわふわと色々なことを書いてしまった。
-要するに言いたいのは、RSC を新しく始めるのであれば、「コンポーネントは自身の描画に必要な情報は自分自身で取得する」に留意して欲しい、ということ。
+例によって、連々と色々なことを書いてしまった。
+
+要するに言いたいのは、RSC を新しく始めるのであれば、「コンポーネントは自身の描画に必要な情報は自分自身で取得する」に留意して欲しいということ。
