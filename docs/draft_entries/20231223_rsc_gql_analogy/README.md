@@ -45,7 +45,7 @@ https://speakerdeck.com/quramy/bffs-cosmos-in-folio-sec-at-uit?slide=26
 
 少し話が逸れるけど、CSS については 「Component と CSS は対として自己完結した管理をすべき」はもう何年も前から当たり前として認知されていると思う。これと同じように、データ取得についても中央集権ではなく自律分散させたいのだ。
 
-RSC における「Server Component がネイティブに非同期処理を行ってよい」が、自律分散な データ取得を求める身にとって福音となるのは当然の帰結だ。Component が個々にデータ収録を行うので、バックエンド呼び出しを行いながら React のレンダリングも同時に動いていく。Render as you fetch というやつ。
+RSC における「Server Component がネイティブに非同期処理を行ってよい」が、自律分散な データ取得を求める身にとって福音となるのは当然の帰結だ。Component が個々にデータ取得を行うので、バックエンド呼び出しと React のレンダリングが同時に動いていく。
 
 ![Render as you fetch](render_as_you_fetch_rsc.png)
 
@@ -225,7 +225,7 @@ export default async function Posts() {
 import { getUserById } from "@/services";
 
 export async default function User({ userId }: { userId: string }) {
-  const user = getUserById(userId);
+  const user = await getUserById(userId);
   if (!user) return null;
 
   const { name, email } = user;
