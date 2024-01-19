@@ -1,6 +1,29 @@
 # Web フロントエンドの標準化でやっていることメモ
 
-## 全体的アーキテクチャのキャッチアップと選定
+<!-- !npx markdown-toc -i % --maxdepth 3 --no-firlsth1 -->
+
+<!-- toc -->
+
+- [0. 全体的アーキテクチャのキャッチアップと選定](#0-%E5%85%A8%E4%BD%93%E7%9A%84%E3%82%A2%E3%83%BC%E3%82%AD%E3%83%86%E3%82%AF%E3%83%81%E3%83%A3%E3%81%AE%E3%82%AD%E3%83%A3%E3%83%83%E3%83%81%E3%82%A2%E3%83%83%E3%83%97%E3%81%A8%E9%81%B8%E5%AE%9A)
+- [1. ソースコードの書き方を考える](#1-%E3%82%BD%E3%83%BC%E3%82%B9%E3%82%B3%E3%83%BC%E3%83%89%E3%81%AE%E6%9B%B8%E3%81%8D%E6%96%B9%E3%82%92%E8%80%83%E3%81%88%E3%82%8B)
+  - [ライブラリの選定, インストール](#%E3%83%A9%E3%82%A4%E3%83%96%E3%83%A9%E3%83%AA%E3%81%AE%E9%81%B8%E5%AE%9A-%E3%82%A4%E3%83%B3%E3%82%B9%E3%83%88%E3%83%BC%E3%83%AB)
+  - [ディレクトリ構成](#%E3%83%87%E3%82%A3%E3%83%AC%E3%82%AF%E3%83%88%E3%83%AA%E6%A7%8B%E6%88%90)
+  - [Scaffold](#scaffold)
+  - [CSS 関連](#css-%E9%96%A2%E9%80%A3)
+  - [PoC の作成](#poc-%E3%81%AE%E4%BD%9C%E6%88%90)
+- [2. Working Agreement](#2-working-agreement)
+  - [テスト戦略](#%E3%83%86%E3%82%B9%E3%83%88%E6%88%A6%E7%95%A5)
+- [3. ビルドパイプライン](#3-%E3%83%93%E3%83%AB%E3%83%89%E3%83%91%E3%82%A4%E3%83%97%E3%83%A9%E3%82%A4%E3%83%B3)
+- [4. BFF 周りの基盤選定](#4-bff-%E5%91%A8%E3%82%8A%E3%81%AE%E5%9F%BA%E7%9B%A4%E9%81%B8%E5%AE%9A)
+- [5. エラーハンドリングの設計](#5-%E3%82%A8%E3%83%A9%E3%83%BC%E3%83%8F%E3%83%B3%E3%83%89%E3%83%AA%E3%83%B3%E3%82%B0%E3%81%AE%E8%A8%AD%E8%A8%88)
+- [6. 計装](#6-%E8%A8%88%E8%A3%85)
+- [7. カスタムイベント計測](#7-%E3%82%AB%E3%82%B9%E3%82%BF%E3%83%A0%E3%82%A4%E3%83%99%E3%83%B3%E3%83%88%E8%A8%88%E6%B8%AC)
+- [8. テスト見直し](#8-%E3%83%86%E3%82%B9%E3%83%88%E8%A6%8B%E7%9B%B4%E3%81%97)
+- [9. NPM package update](#9-npm-package-update)
+
+<!-- tocstop -->
+
+## 0. 全体的アーキテクチャのキャッチアップと選定
 
 フロントエンドエンジニアだけではなく、バックエンドエンジニアや SRE の意見も加味しつつ決める部分
 
@@ -19,9 +42,14 @@
 
 同じ様なコードを書くにせよ nginx に .js や .css を載せるのか、 Node.js のサーバーを Docker Image として用意して Deploy するのかで後続で気にすることは大きく異なる
 
-## ソースコードの書き方を考える
+また、対応ブラウザについてのキャッチアップもこのタイミングで行う。
 
-これを済ませておかないと、「複数人で開発を開始するのが難しい」という系統に絞って考える。
+- Browsers List の元ネタとして. 「iOS safari は xx までをサポートするよ」といった情報
+- 立ち上げ時点で明確なバージョンが決まってなかったとしても、下限バージョンについての考え方の目線を合わせておくだけでもよい
+
+## 1. ソースコードの書き方を考える
+
+「これを済ませておかないと、複数人で開発を開始するのが難しい」という系統に絞って考える。
 
 実際にフロントエンドを開発していくメンバー同士でワイワイと相談しながら進めていくとよい。
 
@@ -32,6 +60,8 @@
 ### ライブラリの選定, インストール
 
 package.json に Dependency 追加したり、`.xxxrc` や `xxx.config.js` を作成していく作業。
+
+ライブラリ選定の基準としては、一般的な「GitHub star 数」「npm DL 数」「release 頻度」などを気にするが、机上検証だけでなく自身やメンバーで複数ライブラリを触ってみて確認するのもあり。
 
 - お約束系:
   - TypeScript, prettier, ESLint あたり
@@ -50,7 +80,7 @@ package.json に Dependency 追加したり、`.xxxrc` や `xxx.config.js` を�
     - Recoil は非アクティブなため、リスク高い
 - Form ライブラリ
   - React の場合、RHF(react-hook-form) 一強？
-  - RHF だけでなく、resolver (e.g. zod) も検討しておく
+  - RHF だけでなく、Validation に使う resolver (e.g. zod) も検討しておく
 - API 通信方式
   - ここで言っているのは、ブラウザ - Node.js 間の通信ではなく、フロントエンド - バックエンド通信, チームや開発言語を跨いで IDL が必要になる箇所のこと
   - OpenAPI の場合
@@ -70,7 +100,7 @@ package.json に Dependency 追加したり、`.xxxrc` や `xxx.config.js` を�
   - 実質 Storybook 以外の選択肢が無い
 - テスト関係
   - 最低限の Component Unit Test が書けるくらいのセットアップを事前に済ませておくと楽
-  - jest, jest-environment-jsdom, testing-lib のインストール及び、global な stub の設定など(e.g. Next Router)
+  - Jest(or Vitest), jest-environment-jsdom, testing-lib のインストール及び、global な stub の設定など(e.g. Next Router)
 
 ### ディレクトリ構成
 
@@ -89,7 +119,7 @@ package.json に Dependency 追加したり、`.xxxrc` や `xxx.config.js` を�
 hygen や schematics などのツールでチームメンバが初動しやすいようにしておく。
 
 - Component
-  - CSS, Storybook, test に何を使うか、及びディレクトリ構成の大まかな検討が完了していれば、Component を自動生成するようにしておく
+  - CSS, Storybook, 単体テストに何を使うか、及びディレクトリ構成の大まかな検討が完了していれば、Component を自動生成するようにしておく
 - API Client
   - 自分で組むことは無いので、Open API Generator や GraphQL Codegen などの設定と同じ意味
 
@@ -123,24 +153,27 @@ hygen や schematics などのツールでチームメンバが初動しやす�
   - Client Site Routing と Server Side Rendering におけるデータ取得経路の違いを整理・理解しておく
   - API やその結果の Client State の初期値がどう hydrate されるのかを検証・理解しておく
 
-## BFF 周りの基盤選定
+## 2. Working Agreement
 
-BFF(Backend For Frontend) をフロントエンドで開発・運用する場合に考えること
+この辺りで複数人でコードを書ける下地が大枠整いつつある状態となっているはず.
 
-- 環境変数の取り扱い
-  - Server Side に留めるもの (各種 Secret や Backend Service の URL)と、ブラウザまで露出させるべきもの (インターネットから見たサービスの FQDN など) を分別して管理できるようにしておく
-- セッション関連
-  - 大概が認可とセットになる
-  - Redis / DynamoDB などの middleware と結合する箇所の設定
-    - express-session や next-session など
-- ロギング
-  - ローカル開発時以外は構造化ログで出力しておく、など実行環境に合わせてロギングミドルウェア(pino や morgan) の設定を仕込む
+メンバー全員でなるべく PR を開ける(= PR を開くことに抵抗を感じさせないようにする)環境の醸成をしておけるとよい。
 
-## Working Agreement
+特に初期段階では横でディレクトリ構成の検討のような、ドラスティック(かつ Conflict を起こしやすい) 検討も並行で走っているのが常なので、「Stale な Opened PR は極力少なくする」に重点を置く.
 
-T.B.D.
+e.g. 1 Approver ついたら PR Author が main/master に merge してよい
 
-## ビルドパイプライン
+### テスト戦略
+
+テストをどこまで用意させるのかを考えるのも、まずはこのタイミングから。
+
+VRT や E2E などの高コストな自動テストを、初手から構築しても旨味が少ないはず。どのタイミングでそれらに向き合うとよいかを確認しておくこと。
+
+最終的には「VRT や E2E も含めてあったほうがよい」に収束するので、後回しにしても登るのが難しくないような基盤としておくことは重要。
+
+e.g. Storybook ベースで VRT を加味して、stories.tsx と Render する test.tsx だけは commit するルールとしておき、初期は Jest / Storyshots のみを運用するようにしておく
+
+## 3. ビルドパイプライン
 
 レポジトリから実行環境に Deploy するまでの自動化部分。
 すべてをフロントエンドがやる訳では無いが、インフラ・SRE と分担しつつ恊働していく。
@@ -170,7 +203,18 @@ CI / CD にどんなツールを採用しているかで多少記法は異なる
 
 特に Build と Deploy を分離する（ステージング用のビルド成果物をそのまま本番にも Deploy する）場合は、環境差異となるパラメータを外からインジェクトできるように、環境変数の取り扱いにちゃんと向き合わないといけない
 
-## エラーハンドリングの設計
+## 4. BFF 周りの基盤選定
+
+BFF(Backend For Frontend) をフロントエンドで開発・運用する場合に考えること
+
+- 環境変数の取り扱い
+  - Server Side に留めるもの (各種 Secret や Backend Service の URL)と、ブラウザまで露出させるべきもの (インターネットから見たサービスの FQDN など) を分別して管理できるようにしておく
+- セッション関連
+  - 大概が認可とセットになる
+  - Redis / DynamoDB などの middleware と結合する箇所の設定
+    - express-session や next-session など
+
+## 5. エラーハンドリングの設計
 
 バリデーションエラーとか、認証失敗ではなく、「予期せぬエラー」のような例外挙動について、どのようにユーザーにフィードバックするのかを設計・実装する作業。
 
@@ -191,13 +235,54 @@ CI / CD にどんなツールを採用しているかで多少記法は異なる
 
 また、Node.js / ブラウザ問わず、JavaScript の Error Tracking も仕込む
 
-- React であれば、Root Error Boundary や、express error handling middleware に Sentry や Datadog への通知を仕込む
+- React であれば、Root Error Boundary, Express であれば error handling middleware に Sentry や Datadog への通知を仕込む
   - tag をセットしておくと、実際に問題が発生したときの解析が楽(e.g. 認証済みユーザー識別子のハッシュ値)
 
-## カスタムイベント計測
+## 6. 計装
 
-T.B.D.
+所謂 Observability 関係. エラーハンドリングと似ているが、こちらはモニタリング要求などに合わせて考慮・実装を行っていく.
 
-## 計装
+モニタリング要求と書いてしまうと監視要件だけを連想してしまうが、ブラウザの Session Replay や SSR(BFF) の Distributed Tracing があるのとないのではは問題発生時の原因調査効率に段違いに差がでるので、要件になくとも開発者主導でねじ込みたいレベル.
 
-T.B.D.
+- ブラウザ側で考慮する部分:
+  - Performance Monitoring
+    - CWV などのフィールドデータ集計が必要であれば、送信先に合わせて設定を入れておく(e.g. Datadog RUM / Firebase / GA / etc...).
+  - Session Replay
+    - いわゆる Sentry / Datadog RUM に搭載されている機能のこと
+- BFF を フロントエンドで構築・運用するケースで考慮する部分:
+  - Logging
+    - ローカル開発時以外は構造化ログで出力しておく、など実行環境に合わせてロギングミドルウェア(Express であれば pino や morgan) の設定を仕込む
+  - Distributed Tracing
+    - Datadog APM / New Relic / 汎用 Open Telemetry など、プロダクトが契約している SaaS に合わせて、SDK を仕込んでいく
+      - SaaS の場合、Trace データの多寡で金額やサンプリングレートが変更されるため、無駄な Trace data (e.g. health check や static assets) は SDK 設定時に exclude しておく
+    - SDK 提供元によっては、Error Tracking 系と同時に設定できるものも多いため、同じタイミングで仕込むと少しだけ楽
+
+## 7. カスタムイベント計測
+
+こちらもモニタリング関係。所謂コンバージョントラッキングであったり、PV 数計測のようなビジネスサイドからの要求となる部分。
+Firebase(GA4) / Google Tag Manager / Adobe Analytics / Karte などの SDK をラップしつつ、画面実装からイベントを発火できるようにしておく。
+
+画面の主機能ではないため後回しにされがちだが、最後まで積み残すと「計測したいパラメータをブラウザに伝播させえるためにはバックエンドから見直しが必要」のような悲しい事態のリスクがあるため、とっとと見極めておくが吉。
+
+例えば GA の場合、PV を計測するときに自動で `document.title` が送信され、これが GA 側画面に表示されるため SPA で API 実行結果を使って動的に `document.title` を設定しているケースでは、正しいタイミングでイベントを発火させないと、一つ前の画面の title 値が送信されてしまったりするので要注意。
+
+## 8. テスト見直し
+
+ある程度開発が進捗していくと「ステージング環境で妙な動きをしている」のような事象が絶対に起こる。
+
+それは QA チームが実施する手動テストかもしれないし、ビジネスサイドが行うドッグフーディングかもしれない。切欠自体は何でも構わないが、似たようなミスが繰り返されているのを目撃したら、それは仕組みを見直す機会と捉えるべき。
+
+特に「気づいたら壊れていた」のような事象が発生したのであれば、E2E や VRT などの Non Degrade Test 導入を考慮すること。
+
+## 9. NPM package update
+
+Dependa bot / Renovaate を仕込んでおいて、自動で PR が来るようにしておくと良いのはやればできるのでいいとして、「すべてのライブラリの version が最新であること」を目指しても現実的ではないため、Update するパッケージの種別・頻度について、ガイドラインを考えておくとよい。
+
+以下は例:
+
+- Dev Dependencies はビルド成果物に影響がない場合に限り最新追従を心がけるようにする
+- フレームワーク本体(e.g. Next.js) の Version Up 時は QA チームに追加テストを依頼してからリリースする
+- TypeScript はフォーマッタ(prettier) や Linter(ESLint) 側のエコシステムが追従してから最新可する
+- 半年に一度程度には Node.js の version を見直す
+- 半年に一度程度には不要となった Polyfil を削除できないか見直す
+- etc...
