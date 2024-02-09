@@ -33,7 +33,7 @@
 
 ## 0. 全体的アーキテクチャのキャッチアップと選定
 
-- Meta Framework (e.g. Next.js App Router) どうするの？の検討や合意形成
+- Meta Framework (e.g. Next.js App Router or Remix or ...) どうするの？の検討や合意形成
   - SSR (Server Side Node.js) の有無
     - 最近はそこまで気にされなくなったとはいえ、フロントエンドがサーバー運用することにネガティブを感じる現場もまだある印象
 - フロントエンド - バックエンド間の通信方式
