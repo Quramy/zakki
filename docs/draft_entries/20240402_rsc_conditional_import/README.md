@@ -90,7 +90,12 @@ https://github.com/vercel/next.js/blob/v14.2.0-canary.51/packages/next/src/build
 ## 使い所
 
 紹介はしてみたものの、アプリケーションサイドがカジュアルに使い倒すものでは無いと考えている。
-TypeScript は Subpath imports について `defualt` や `types` までは認識するが、`react-server` を認識するわけではない。`use server` な Component から `import "#util"` にコードジャンプしても CC 向けである `default` の実装を開くため、デフォルト側の実装にコメントなりを記載しておかないと、Conditional Imports を利用していることが伝わらないだろうし。
+
+似たような機構に React Native の Platform Specific Extensions (`.ios.js` とか `.android.js` などで実行環境ごとのモジュールを切り替えるヤツ) がある。
+iOS / Android の違いは横並びの概念であるが、RSC 環境かどうかというのは横並びというよりはむしろ事前・事後の関係に近い感覚なので、実装の異なるモジュールを import したいという要件が発生する頻度は React Native と比べると低いのではないかと思う。
+実際、App Router の実案件をやっていてこのテクニックが必要だった箇所というのも思い当たらない。
+
+また、TypeScript は Subpath imports について `defualt` や `types` までは認識するが、`react-server` を認識するわけではない。`use server` な Component から `import "#util"` にコードジャンプしても CC 向けである `default` の実装を開くため、デフォルト側の実装にコメントなりを記載しておかないと、Conditional Imports を利用していることが伝わらないだろうし。
 
 <!--
 以前に App Router な Next.js の案件でフィーチャートグルを環境変数で実現したことがあったのだけど、以下のような実装をしていた。
