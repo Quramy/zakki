@@ -6,6 +6,6 @@
     "url": "git+https://github.com/Quramy/zakki.git"
   },
   "devDependencies": {
-    "prettier": "^2.7.1"
+    "prettier": "^2.8.8"
   }
 }
