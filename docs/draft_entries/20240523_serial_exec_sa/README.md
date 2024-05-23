@@ -11,25 +11,19 @@ Next.js の場合、App Router (Router Reducer) によって、Server Action の
 ```tsx
 "use client";
 
-import { useState, startTransition } from "react";
+import { useState } from "react";
 import { increment } from "./actions";
 
 export default function Page() {
   const [count, updateCount] = useState(0);
 
   return (
-    <div>
+    <form action={() => increment(count).then(updateCount)}>
       Count: {count}
       <nav>
-        <button
-          onClick={() =>
-            startTransition(() => increment(count).then(updateCount))
-          }
-        >
-          Increment
-        </button>
+        <button>Increment</button>
       </nav>
-    </div>
+    </form>
   );
 }
 ```
