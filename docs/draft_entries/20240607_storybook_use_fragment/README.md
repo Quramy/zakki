@@ -518,7 +518,7 @@ describe(Meta.title, () => {
 
 ## おまけ 2: Mutation のスタブ
 
-`useQuery` や `useFragment` については「事前に Apollo Cache を暖機運転させておく」という考え方で割とどうにでもなるのですが、 `useMutation` に代表されるようなユーザーインタラクションが発生して初めて Cache の状態が変化する類の機能について、Story を書こうとすると、もう一手間書ける必要があります。
+`useQuery` や `useFragment` については「事前に Apollo Cache を暖機運転させておく」という考え方で割とどうにでもなるのですが、 `useMutation` に代表されるようなユーザーインタラクションが発生して初めて Cache の状態が変化する類の機能について、Story を書こうとすると、もう一手間かける必要があります。
 
 これについても、 Apollo Client を提供する Decorator にて Apollo Link を `SchemaLink` に差し替えるようにすれば、任意の Resolvers を Story に差し込めます。
 
