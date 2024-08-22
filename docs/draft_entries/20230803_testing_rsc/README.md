@@ -199,26 +199,26 @@ describe(ArtistPagePresentation, () => {
 ```tsx
 /* src/app/artists/[artistId]/page.stories.tsx */
 
-import type { Meta, StoryObj } from '@storybook/react'
+import type { Meta, StoryObj } from "@storybook/react";
 
-import { ArtistPagePresentation as ArtistPage } from './page'
+import { ArtistPagePresentation as ArtistPage } from "./page";
 
 export default {
-  title: 'ArtistPage',
+  title: "ArtistPage",
   component: ArtistPage,
-} satisfies Meta
+} satisfies Meta;
 
-type Story = StoryObj<typeof ArtistPage>
+type Story = StoryObj<typeof ArtistPage>;
 
 export const Default = {
   args: {
     artist: {
-      name: 'John Coltrane',
+      name: "John Coltrane",
       biography:
         "Coltrane was born in his parents' apartment at 200 Hamlet Avenue in Hamlet, North Carolina, on September 23, 1926.",
     },
   },
-} satisfies Story
+} satisfies Story;
 ```
 
 ## サーバー側のテスト
@@ -261,39 +261,41 @@ export async function ArtistPage({ params: { artistId } }: Props) {
  * @jest-environment @quramy/jest-prisma-node/environment
  *
  */
-import { notFound } from 'next/navigation'
-import { initialize } from '@quramy/prisma-fabbrica'
+import { notFound } from "next/navigation";
+import { initialize } from "@quramy/prisma-fabbrica";
 
-import { ArtistFactory } from '@/factories'
+import { ArtistFactory } from "@/factories";
 
-import { ArtistPage, ArtistPagePresentation } from './page'
+import { ArtistPage, ArtistPagePresentation } from "./page";
 
-jest.mock('next/navigation', () => ({ notFound: jest.fn() }))
-jest.mock('@/prismaClient', () => ({ prisma: jestPrisma.client }))
+jest.mock("next/navigation", () => ({ notFound: jest.fn() }));
+jest.mock("@/prismaClient", () => ({ prisma: jestPrisma.client }));
 
 describe(ArtistPage, () => {
-  beforeEach(() => initialize({ prisma: jestPrisma.client }))
+  beforeEach(() => initialize({ prisma: jestPrisma.client }));
 
-  it('redirects to 404 for not existing artist id', async () => {
-    await ArtistPage({ params: { artistId: 'NOT_EXISTING_ID' } })
+  it("redirects to 404 for not existing artist id", async () => {
+    await ArtistPage({ params: { artistId: "NOT_EXISTING_ID" } });
 
-    expect(notFound).toBeCalledTimes(1)
-  })
+    expect(notFound).toBeCalledTimes(1);
+  });
 
-  it('passes fetched data to presentational component for existing id', async () => {
-    const created = await ArtistFactory.create()
+  it("passes fetched data to presentational component for existing id", async () => {
+    const created = await ArtistFactory.create();
 
-    const { type, props } = await ArtistPage({ params: { artistId: created.id } })
+    const { type, props } = await ArtistPage({
+      params: { artistId: created.id },
+    });
 
-    expect(type).toBe(ArtistPagePresentation)
+    expect(type).toBe(ArtistPagePresentation);
     expect(props).toMatchObject({
       artist: {
         name: created.name,
         biography: created.biography,
       },
-    } satisfies React.ComponentProps<typeof ArtistPagePresentation>)
-  })
-})
+    } satisfies React.ComponentProps<typeof ArtistPagePresentation>);
+  });
+});
 ```
 
 ここで、`ArtistPage` コンポーネントの実行環境が jsdom ではないことを明示したかったため、テスト Suite のファイルを `page.server.test.tsx` として別のファイルにしています。
@@ -471,16 +473,16 @@ export async function ArtistPage({ params: { artistId } }: Props) {
 export const Default = {
   args: {
     artist: {
-      name: 'John Coltrane',
+      name: "John Coltrane",
       biography:
         "Coltrane was born in his parents' apartment at 200 Hamlet Avenue in Hamlet, North Carolina, on September 23, 1926.",
     },
     // ここに アルバム情報を追記する
     albumsProps: {
-      albums: [{ id: '001', name: 'My Favorite Things', releaseYear: '1961' }],
+      albums: [{ id: "001", name: "My Favorite Things", releaseYear: "1961" }],
     },
   },
-} satisfies Story
+} satisfies Story;
 ```
 
 ![](presentation_only.png)
@@ -510,7 +512,7 @@ Container / Presentation パターンそのものは、特に目新しい話で�
 
 https://github.com/Quramy/server-components-with-container-presentation
 
-## おまけ: Streaming
+## おまけ１: Streaming
 
 今回例に挙げた `ArtistPage` コンポーネントでは、以下 2 つの非同期処理が逐次的に行われる、いわゆるウォーターフォールになっています。
 
@@ -573,6 +575,88 @@ describe(ArtistPagePresentation, () => {
   });
 });
 ```
+
+## おまけ２: Container コンポーネントのテストと JSX の構造
+
+本文中でも触れたとおり、Container / Presentation のペアはネストされる可能性があります。
+
+```tsx
+export async function ArtistPage({ params: { artistId } }: Props) {
+  const artist = await prisma.artist.findUnique({ where: { id: artistId } });
+
+  if (!artist) {
+    return notFound();
+  }
+
+  return (
+    <ArtistPagePresentation
+      artist={artist}
+      albumsNode={<Albums artistId={artist.id} />}
+    />
+  );
+}
+```
+
+`Albums` Container コンポーネントの注入を `ArtistPage` の Container コンポーネントに担わせています。
+最初に用意した `ArtistPage` コンポーネントのテストで、この注入部分も検証されるようにテストを強化することを考えましょう。具体的には下記の部分です。
+
+```tsx
+/* src/app/artists/[artistId]/page.server.test.tsx */
+
+// 中略
+
+describe(ArtistPage, () => {
+  // 中略
+  it("passes fetched data to presentational component for existing id", async () => {
+    const created = await ArtistFactory.create();
+
+    const { type, props } = await ArtistPage({
+      params: { artistId: created.id },
+    });
+
+    expect(type).toBe(ArtistPagePresentation);
+    expect(props).toMatchObject({
+      artist: {
+        name: created.name,
+        biography: created.biography,
+      },
+    } satisfies React.ComponentProps<typeof ArtistPagePresentation>);
+
+    // artistId が適切に設定された <Albums /> を注入していること
+  });
+});
+```
+
+`ArtistPage` 関数の結果から `albumsNode` を探し、さらにそれが `react.createElement` の結果である、という検証コードをナイーブに記述することはできるのですが、これは `ArtistPage` の JSX 構造への依存が強くなり、いわゆる「壊れやすい(= Fragile な)」テストとなっていく可能性があります。これを回避する目的で「描画された JSX Element から特定のノードを検索してその Props を取り出せる」ユーティリティを用意しておくと、壊れにくいテストコードにできると思います。
+
+```tsx
+/* src/app/artists/[artistId]/page.server.test.tsx */
+// 中略
+
+import { getProps } from "@/lib/testing/getProps";
+
+describe(ArtistPage, () => {
+  // 中略
+
+  it("passes fetched data to presentational component for existing id", async () => {
+    const created = await ArtistFactory.create();
+
+    const el = await ArtistPage({ params: { artistId: created.id } });
+
+    expect(
+      getProps<typeof ArtistPagePresentation>(el, ArtistPagePresentation)!
+        .artist
+    ).toMatchObject({
+      name: created.name,
+      biography: created.biography,
+    });
+
+    expect(getProps<typeof Albums>(el, Albums)!.artistId).toBe(created.id);
+  });
+});
+```
+
+上記の `getProps` は HTML での `getElementsByTagName` 似たようなものと捉えてください。実装例はサンプルレポジトリで公開しています（同じことが可能な npm パッケージがどこかにあるのかもしれませんが、探すのが面倒だったので自作しています）。
 
 ## 2023.12.6 追記 Storybook の RSC 対応について
 
