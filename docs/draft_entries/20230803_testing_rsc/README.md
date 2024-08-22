@@ -656,7 +656,7 @@ describe(ArtistPage, () => {
 });
 ```
 
-上記の `getProps` は HTML での `getElementsByTagName` 似たようなものと捉えてください。実装例はサンプルレポジトリで公開しています（同じことが可能な npm パッケージがどこかにあるのかもしれませんが、探すのが面倒だったので自作しています）。
+上記の `getProps` は HTML での `getElementsByTagName` と似たようなものと捉えてください。[実装例はサンプルレポジトリで公開](https://github.com/Quramy/server-components-with-container-presentation/blob/main/src/lib/testing/getProps.ts) しています（同じことが可能な npm パッケージがどこかにあるのかもしれませんが、探すのが面倒だったので自作しています）。
 
 ## 2023.12.6 追記 Storybook の RSC 対応について
 
