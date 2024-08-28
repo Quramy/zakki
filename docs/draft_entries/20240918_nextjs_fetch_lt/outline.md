@@ -7,12 +7,12 @@
 # Outlines
 
 - 背景: Next.js App Router 開発で苦しんだこと
-  - 僕が苦しめられたいくつかの問題
-    - その 1. Cache がデフォルトで強く有効な件.
-      - 割と有名な話なので詳細は割愛
-    - その 2. Datadog APM に繋げなかった件
-      - Next.js には Instrumentation.ts という（主に o11y 用途で利用する) hook があるが、ここで dd-trace を初期化できない問題(現在は修正済み)
-    - その 3. MSW 使わなかった件
+  - その 1. Cache がデフォルトで強く有効な件.
+    - 割と有名な話なので詳細は割愛
+  - その 2. Datadog APM に繋げなかった件
+    - Next.js には Instrumentation.ts という（主に o11y 用途で利用する) hook があるが、ここで dd-trace を初期化できない問題(現在は修正済み)
+  - その 3. MSW 使わなかった件
+    - `msw/node` が next server 上で動作しない問題. これがあったために、ローカル開発/E2E ともに、常にバックエンドサービスやその裏の RDB を起動した状態で行うことに
   - これらは全部 fetch API にまつわる内容
 - App Router における fetch API patch
   - Next.js は fetch API をパッチしている
@@ -39,6 +39,10 @@
   - msw にせよ計装にせよ、Dedupe や Cache やらのアプリレイヤの処理が噛む前の「生の」fetch を監視したい
   - のに、そこにはわたってくるのは、フレームワーク側が魔改造した後の関数
   - パッチの順序が 明示的でなく、且つ uncontrollable であるから起こる問題
+  - 3rd party 側の tool(e.g. dd-trace, msw, sentry, etc...) 初期化時に渡される fetch の状態がパッチ済であったり、そうでなかったりするのも質が悪い
+    - `next dev` と `next start` で結果が異なる
+    - 記述するファイル(instrumentation.ts or 通常の SC や SA のコード) で結果が異なる
+    - 初回起動時は問題ないが、HMR が発生すると結果が異なる
 - 本質的に改善される見込み
   - そもそもパッチしなきゃよい
     - 計装系(たとえば sentry/node) は パッチではない方法で fetch の監視や Tracing ID Header の追加を行っている
