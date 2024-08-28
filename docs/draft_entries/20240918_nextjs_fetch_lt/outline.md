@@ -33,6 +33,7 @@
     - 当時は `--require tracer.js` のようにし、 Next.js や React がパッチを当てるよりも、もっと早く dd-trace 側で `fetch` をパッチさせるようにして回避
       - これも Next.js Server が Process を分離すると成り立たない手法のため、実は危うい(実際、Next.js Server が 3 processes 立ち上げるなどされていた)
     - instrumentaion.ts に restore された fetch API が渡るようになったため、一旦解決
+      - https://github.com/vercel/next.js/discussions/56446
       - https://github.com/vercel/next.js/pull/60796
       - https://github.com/DataDog/dd-trace-js/issues/3457#issuecomment-2310020461
   - MSW 使わなかった件
@@ -44,7 +45,7 @@
   - msw にせよ計装にせよ、Dedupe や Cache やらのアプリレイヤの処理が噛む前の「生の」fetch を監視したい
   - のに、そこにはわたってくるのは、フレームワーク側が魔改造した後の関数
   - パッチの順序が 明示的でなく、且つ uncontrollable であるから起こる問題
-  - 3rd party 側の tool(e.g. dd-trace, msw, sentry, etc...) 初期化時に渡される fetch の状態がパッチ済であったり、そうでなかったりするのも質が悪い
+  - 3rd party 側の tool(e.g. dd-trace, msw, sentry, etc...) 初期化時に渡される fetch の状態がパッチ済であったり、そうでなかったり、tool 側が当てたパッチが破棄されたりするのも質が悪い
     - `next dev` と `next start` で結果が異なる
     - 記述するファイル(instrumentation.ts or 通常の SC や SA のコード) で結果が異なる
     - 初回起動時は問題ないが、HMR が発生すると結果が異なる
