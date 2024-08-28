@@ -1,0 +1,55 @@
+# Title candidates
+
+- Next.js `fetch` がもたらしたもの
+- fetch API ~罪と罰~
+- Nexg.js と fetch API 大人気問題
+
+# Outlines
+
+- 背景: Next.js App Router 開発で苦しんだこと
+  - 僕が苦しめられたいくつかの問題
+    - その 1. Cache がデフォルトで強く有効な件.
+      - 割と有名な話なので詳細は割愛
+    - その 2. Datadog APM に繋げなかった件
+      - Next.js には Instrumentation.ts という（主に o11y 用途で利用する) hook があるが、ここで dd-trace を初期化できない問題(現在は修正済み)
+    - その 3. MSW 使わなかった件
+  - これらは全部 fetch API にまつわる内容
+- App Router における fetch API patch
+  - Next.js は fetch API をパッチしている
+    - Data cache
+    - Dynamic or Static
+    - v15 でデフォルト挙動かわるけどね
+  - React も fetch API をパッチしている(していた)
+    - Request Deduping(通称 Data Cache)
+  - ※ どちらのパッチも server-side( Server Component) でのおはなし
+- Global API の Patch を考えてみる
+  - `globalThis.fetch = applyPath(globalThis.fetch);`
+- 何が起こってたのか
+  - Datadog APM に繋げなかった件
+    - fetch に計装(instrument) を仕掛けられない
+    - すなわち Trace ID が HTTP Header に付与されない. Next.js サーバーよりも後続の Trace と紐づかないため、o11y として致命的
+    - 当時は `--require tracer.js` のようにし、 Next.js や React がパッチを当てるよりも、もっと早く dd-trace 側で `fetch` をパッチさせるようにして回避
+      - これも Next.js Server が Process を分離すると成り立たない手法のため、実は危うい(実際、Next.js Server が 3 processes 立ち上げるなどされていた)
+    - instrumentaion.ts に restore された fetch API が渡るようになったため、一旦解決
+  - MSW 使わなかった件
+    - msw/node も global で fetch API をパッチする
+    - msw/node 2.0 は Next.js で動かないままリリースされた
+    - Next.js の experimental test mode はアーキテクチャ的に全く関係ない
+- 各 tool が **オリジナルな** fetch を欲しがることが根本的に問題
+  - msw にせよ計装にせよ、Dedupe や Cache やらのアプリレイヤの処理が噛む前の「生の」fetch を監視したい
+  - のに、そこにはわたってくるのは、フレームワーク側が魔改造した後の関数
+  - パッチの順序が 明示的でなく、且つ uncontrollable であるから起こる問題
+- 本質的に改善される見込み
+  - そもそもパッチしなきゃよい
+    - 計装系(たとえば sentry/node) は パッチではない方法で fetch の監視や Tracing ID Header の追加を行っている
+      - Node.js の Diagnostics Channel で undici(fetch implementation) を監視している
+    - msw/node はまだその方法に到達できていない (msw のブラウザ側では Service Worker でインターセプトを実装しているため、やはりパッチはしていない)
+    - React (v19 以降)
+      - React からは fetch パッチのコードは削除された
+    - Next.js (v15.canary 以降)
+      - Data Cache: 依然存在はしているが、Default では利用されないように変更された
+      - Request Memoize: React から削除されたパッチ部分も Next.js で再実装されている. こっちはデフォルトで有効なママ(はず. 後で裏取る)
+      - HMR Cache: (これいつからあるんだ？) Opt out できるフラグは存在するが、デフォで有効
+        - そもそも MSW + Next.js がここまで大変なことになったのは、この HMR Cache のせいでは？
+  - Next.js v15 で少しだけ fetch パッチ不要な方向に近づいてはいるものの、まだ先が長そうなイメージ
+- 結論「global な API のパッチは長期的には誰も幸せにならない」
