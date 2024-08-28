@@ -24,7 +24,7 @@ GraphQL あるいは React における自律的なデータ取得について
     - Server でしかできないこと、すなわち データ解決非同期IO
   - Fragment Container + Resolver = Async Server Component
     - GraphQL Resolver が Type Data を返す代わりに、Server Component が「Data + 描画された UI の断片」を返す
-    - RSC の場合、「どこまで Server で Render したおくか」の境界には選択の余地がある (Client Boundary)
+    - RSC の場合、「どこまで Server で Render しておくか」の境界には選択の余地がある (Client Boundary)
   - この構成で開発するために必要なこと
     - 対応フレームワーク: 2024.09 現在は実質的に Next.js のみ. Remix(React Router) は対応を表明している
     - GraphQL Resolver 開発の知見
