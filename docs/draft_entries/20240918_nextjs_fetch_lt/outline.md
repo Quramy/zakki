@@ -26,13 +26,18 @@
   - `globalThis.fetch = applyPath(globalThis.fetch);`
 - 何が起こってたのか
   - Datadog APM に繋げなかった件
+    - dd-trace は Outgoing な HTTP Request の監視について、`fetch` のパッチで実現している
+      - https://github.com/DataDog/dd-trace-js/blob/v5.21.0/packages/datadog-instrumentations/src/fetch.js#L11
     - fetch に計装(instrument) を仕掛けられない
     - すなわち Trace ID が HTTP Header に付与されない. Next.js サーバーよりも後続の Trace と紐づかないため、o11y として致命的
     - 当時は `--require tracer.js` のようにし、 Next.js や React がパッチを当てるよりも、もっと早く dd-trace 側で `fetch` をパッチさせるようにして回避
       - これも Next.js Server が Process を分離すると成り立たない手法のため、実は危うい(実際、Next.js Server が 3 processes 立ち上げるなどされていた)
     - instrumentaion.ts に restore された fetch API が渡るようになったため、一旦解決
+      - https://github.com/vercel/next.js/pull/60796
+      - https://github.com/DataDog/dd-trace-js/issues/3457#issuecomment-2310020461
   - MSW 使わなかった件
     - msw/node も global で fetch API をパッチする
+      - https://github.com/mswjs/interceptors/blob/v0.34.3/src/interceptors/fetch/index.ts#L33
     - msw/node 2.0 は Next.js で動かないままリリースされた
     - Next.js の experimental test mode はアーキテクチャ的に全く関係ない
 - 各 tool が **オリジナルな** fetch を欲しがることが根本的に問題
@@ -47,9 +52,15 @@
   - そもそもパッチしなきゃよい
     - 計装系(たとえば sentry/node) は パッチではない方法で fetch の監視や Tracing ID Header の追加を行っている
       - Node.js の Diagnostics Channel で undici(fetch implementation) を監視している
+        - https://github.com/gas-buddy/opentelemetry-instrumentation-fetch-node/blob/main/src/index.ts
+        - https://github.com/getsentry/sentry-javascript/blob/develop/packages/node/src/integrations/node-fetch.ts
+      - ただし、undici の Diagnostics Channel は Experimental 扱いであり、Minor Version Up で subscriber に渡るパラメータに互換性のない変更が発生し得るのでリスクゼロではない
+        - https://github.com/nodejs/undici/blob/main/docs/docs/api/DiagnosticsChannel.md
     - msw/node はまだその方法に到達できていない (msw のブラウザ側では Service Worker でインターセプトを実装しているため、やはりパッチはしていない)
+      - https://kettanaito.com/blog/why-patching-globals-is-harmful
     - React (v19 以降)
       - React からは fetch パッチのコードは削除された
+      - https://github.com/facebook/react/pull/28896
     - Next.js (v15.canary 以降)
       - Data Cache: 依然存在はしているが、Default では利用されないように変更された
       - Request Memoize: React から削除されたパッチ部分も Next.js で再実装されている. こっちはデフォルトで有効なママ(はず. 後で裏取る)
