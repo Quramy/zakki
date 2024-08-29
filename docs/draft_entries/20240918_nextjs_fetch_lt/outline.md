@@ -7,41 +7,43 @@
 # Outlines
 
 - 背景: Next.js App Router 開発で苦しんだこと
-  - その 1. Cache がデフォルトで強く有効な件.
-    - 割と有名な話なので詳細は割愛
-  - その 2. Datadog APM に繋げなかった件
-    - Next.js には Instrumentation.ts という（主に o11y 用途で利用する) hook があるが、ここで dd-trace を初期化できない問題(現在は修正済み)
-  - その 3. MSW 使わなかった件
-    - `msw/node` が next server 上で動作しない問題. これがあったために、ローカル開発/E2E ともに、常にバックエンドサービスやその裏の RDB を起動した状態で行うことに
-  - これらは全部 fetch API にまつわる内容
+  - API 通信(fetch API) 関連:
+    - その 1. Cache がデフォルトで強く有効な件
+      - 割と有名な話なので詳細は割愛
+    - その 2. Distributed Trace で苦戦した件
+      - Next.js には Instrumentation.ts という（主に o11y 用途で利用する) hook があるが、ここで dd-trace を初期化できない問題(現在は修正済み)
+    - その 3. MSW 使わなかった件
+      - `msw/node` が next server 上で動作しない問題
+        - https://github.com/mswjs/msw/issues/1644
+      - これがあったために、ローカル開発/E2E ともに、常にバックエンドサービスやその裏の RDB を起動した状態で行うことに
 - App Router における fetch API patch
   - Next.js は fetch API をパッチしている
     - Data cache
     - Dynamic or Static
     - v15 でデフォルト挙動かわるけどね
   - React も fetch API をパッチしている(していた)
-    - Request Deduping(通称 Data Cache)
-  - ※ どちらのパッチも server-side( Server Component) でのおはなし
+    - Request Memoize (Request Dedupe)
+  - ※ どちらのパッチも server-side(Server Component) でのおはなし
 - Global API の Patch を考えてみる
-  - `globalThis.fetch = applyPath(globalThis.fetch);`
+  - `globalThis.fetch = applyPatch(globalThis.fetch);`
 - 何が起こってたのか
-  - Datadog APM に繋げなかった件
-    - dd-trace は Outgoing な HTTP Request の監視について、`fetch` のパッチで実現している
-      - https://github.com/DataDog/dd-trace-js/blob/v5.21.0/packages/datadog-instrumentations/src/fetch.js#L11
-    - fetch に計装(instrument) を仕掛けられない
-    - すなわち Trace ID が HTTP Header に付与されない. Next.js サーバーよりも後続の Trace と紐づかないため、o11y として致命的
-    - 当時は `--require tracer.js` のようにし、 Next.js や React がパッチを当てるよりも、もっと早く dd-trace 側で `fetch` をパッチさせるようにして回避
-      - これも Next.js Server が Process を分離すると成り立たない手法のため、実は危うい(実際、Next.js Server が 3 processes 立ち上げるなどされていた)
-    - instrumentaion.ts に restore された fetch API が渡るようになったため、一旦解決
-      - https://github.com/vercel/next.js/discussions/56446
-      - https://github.com/vercel/next.js/pull/60796
-      - https://github.com/DataDog/dd-trace-js/issues/3457#issuecomment-2310020461
+  - Distributed Trace で苦戦した件
+  - dd-trace は Outgoing な HTTP Request の監視について、`fetch` のパッチで実現している
+    - https://github.com/DataDog/dd-trace-js/blob/v5.21.0/packages/datadog-instrumentations/src/fetch.js#L11
+  - fetch に計装(instrument) を仕掛けられない
+  - すなわち Trace ID が HTTP Header に付与されない. Next.js サーバーよりも後続の Trace と紐づかないため、o11y として致命的
+  - 当時は `--require tracer.js` のようにし、 Next.js や React がパッチを当てるよりも、もっと早く dd-trace 側で `fetch` をパッチさせるようにして回避
+    - これも Next.js Server が Process を分離すると成り立たない手法のため、実は危うい(実際、Next.js Server が 3 processes 立ち上げるなどされていた)
+  - instrumentaion.ts に restore された fetch API が渡るようになったため、一旦解決
+    - https://github.com/vercel/next.js/discussions/56446
+    - https://github.com/vercel/next.js/pull/60796
+    - https://github.com/DataDog/dd-trace-js/issues/3457#issuecomment-2310020461
   - MSW 使わなかった件
     - msw/node も global で fetch API をパッチする
       - https://github.com/mswjs/interceptors/blob/v0.34.3/src/interceptors/fetch/index.ts#L33
     - msw/node 2.0 は Next.js で動かないままリリースされた
     - Next.js の experimental test mode はアーキテクチャ的に全く関係ない
-- 各 tool が **オリジナルな** fetch を欲しがることが根本的に問題
+- 各 tool が **オリジナルな** fetch を欲しがることが根本的に問題 => ここは少し違うか。書き方考える
   - msw にせよ計装にせよ、Dedupe や Cache やらのアプリレイヤの処理が噛む前の「生の」fetch を監視したい
   - のに、そこにはわたってくるのは、フレームワーク側が魔改造した後の関数
   - パッチの順序が 明示的でなく、且つ uncontrollable であるから起こる問題
@@ -49,7 +51,7 @@
     - `next dev` と `next start` で結果が異なる
     - 記述するファイル(instrumentation.ts or 通常の SC や SA のコード) で結果が異なる
     - 初回起動時は問題ないが、HMR が発生すると結果が異なる
-- 本質的に改善される見込み
+- 本質的な改善がなされるんだろうか？
   - そもそもパッチしなきゃよい
     - 計装系(たとえば sentry/node) は パッチではない方法で fetch の監視や Tracing ID Header の追加を行っている
       - Node.js の Diagnostics Channel で undici(fetch implementation) を監視している
