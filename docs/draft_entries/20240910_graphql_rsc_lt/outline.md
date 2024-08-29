@@ -20,7 +20,7 @@ GraphQL あるいは React における自律的なデータ取得について
   - RSC(React Server Components) とは
     - **サーバーでのみ** 動作する React コンポーネントが爆誕
       - 従来の Server Side Rendering は ブラウザで動作する React コンポーネントを サーバーでも動作させているだけ
-  - SC では "Leaf data fetch" が Performance 上のトレードオフではなくない
+  - SC では "Leaf data fetch" が Performance 上のトレードオフではなくなる
     - Server でしかできないこと、すなわち データ解決非同期IO
   - Fragment Container + Resolver = Async Server Component
     - GraphQL Resolver が Type Data を返す代わりに、Server Component が「Data + 描画された UI の断片」を返す
