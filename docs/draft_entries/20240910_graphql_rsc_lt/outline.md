@@ -40,7 +40,7 @@ GraphQL あるいは React における自律的なデータ取得について
         - Apollo や Relay の Store 層 v.s. Next.js の Cache
         - `@defer` v.s. React Streaming SSR
     - RSC を使わずに、GraphQL + Relay(or Apollo Client) + Remix SPA mode の構成の方がまだマシ
-  - 不特定多数に向けた API Gateway としての GraphQL は残っていくと思う
+  - LSUDs API Gateway としての GraphQL は残っていくと思う
     - 例: Shopify のようなパターン
   - 「現行資産としての GraphQL サーバー + 新規のフロントエンドに RSC」への折り合いは、ユーザーランドにとって今後の課題
     - そもそも RSC が膾炙しない可能性もありうるけど. Next.js 以外でも使えるようになってからが本番？
