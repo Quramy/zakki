@@ -9,7 +9,7 @@
 
 - 背景: Next.js App Router 開発で苦しんだこと
   - API 通信(fetch API) 関連:
-    - その 1. Cache がデフォルトで強く有効な件
+    - その 1. デフォルトでキャッシュされる件
       - 割と有名な話なので詳細は割愛
     - その 2. Distributed Trace で苦戦した件
       - Next.js には Instrumentation.ts という（主に o11y 用途で利用する) hook があるが、ここで dd-trace を初期化できない問題(現在は修正済み)
@@ -19,12 +19,11 @@
       - これがあったために、ローカル開発/E2E ともに、常にバックエンドサービスやその裏の RDB を起動した状態で行うことに
 - App Router における fetch API patch
   - Next.js は fetch API をパッチしている
-    - Data cache
-    - Dynamic or Static
-    - v15 でデフォルト挙動かわるけどね
+    - Data cache の利用, `next` オプション
   - React も fetch API をパッチしている(していた)
     - Request Memoize (Request Dedupe)
-  - ※ どちらのパッチも server-side(Server Component) でのおはなし
+  - v15 でデフォルトの挙動は変わる可能性が高いが、パッチを当てている事自体に変化はない
+  - ※ どちらのパッチも server-side(Server Component) での話. Pages Router では関係ない
 - Global API の Patch を考えてみる
   - `globalThis.fetch = applyPatch(globalThis.fetch);`
 - 何が起こってたのか
@@ -64,13 +63,20 @@
       - https://kettanaito.com/blog/why-patching-globals-is-harmful
     - React (v19 以降)
       - React からは fetch パッチのコードは削除された
+      - https://github.com/facebook/react/issues/25573
+        - そもそも反対意見が多かった
       - https://github.com/facebook/react/pull/28896
     - Next.js (v15.canary 以降)
-      - Lee Robinson の tweet
-        - https://twitter.com/leeerob/status/1733154383410684148
       - Data Cache: 依然存在はしているが、Default では利用されないように変更された
       - Request Memoize: React から削除されたパッチ部分も Next.js で再実装されている. こっちはデフォルトで有効なママ(はず. 後で裏取る)
+        - https://github.com/vercel/next.js/pull/65058/files#diff-9389e7475a89a826ddfd492b54b3314fc14d53b375f806f3197ed9a699e2b3a6
       - HMR Cache: (これいつからあるんだ？) Opt out できるフラグは存在するが、デフォで有効
         - そもそも MSW + Next.js がここまで大変なことになったのは、この HMR Cache のせいでは？
   - Next.js v15 で少しだけ fetch パッチ不要な方向に近づいてはいるものの、まだ先が長そうなイメージ
+    - Lee Robinson の tweet
+      - https://twitter.com/leeerob/status/1733154383410684148
+      - https://youtu.be/VBlSe8tvg4U?t=870
+        - 14:30 あたりで、"We're actuall looking to move away from extending the fetch" と言ってはいる
 - 結論「global な API のパッチは長期的には誰も幸せにならない」
+- 参考資料
+  - https://speakerdeck.com/ryo_manba/fetch-kuo-zhang-tokiyatusiyuji-gou-nowei-iwoli-jie-suru
