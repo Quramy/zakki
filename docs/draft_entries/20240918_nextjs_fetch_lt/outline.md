@@ -2,7 +2,8 @@
 
 - Next.js `fetch` がもたらしたもの
 - fetch API ~罪と罰~
-- Nexg.js と fetch API 大人気問題
+- Next.js と fetch API 大人気問題
+- Next.js と fetch API の話
 
 # Outlines
 
@@ -65,6 +66,8 @@
       - React からは fetch パッチのコードは削除された
       - https://github.com/facebook/react/pull/28896
     - Next.js (v15.canary 以降)
+      - Lee Robinson の tweet
+        - https://twitter.com/leeerob/status/1733154383410684148
       - Data Cache: 依然存在はしているが、Default では利用されないように変更された
       - Request Memoize: React から削除されたパッチ部分も Next.js で再実装されている. こっちはデフォルトで有効なママ(はず. 後で裏取る)
       - HMR Cache: (これいつからあるんだ？) Opt out できるフラグは存在するが、デフォで有効
