@@ -11,20 +11,23 @@
 - 導入編
   - なんのための自動テスト？
     - 質がスピードに寄与する
-  - ド新規で VRT やる？ -> やらない
-    - 日々見た目が変わるを当たり前としている中で、毎度確認するか？と言われたら工数かけてまでやる必要ある？と思う
-    - じゃぁいついれんの？
-      - 初回リリースなどのイベント前後
+  - 最初からやる？
+    - ド新規で VRT やる？ -> やらない
+      - 日々見た目が変わるを当たり前としている中で、毎度確認するか？と言われたら工数かけてまでやる必要ある？と思う
+      - じゃぁいついれんの？
+        - 初回リリースなどのイベント前後
   - VRT や Component Test を運用できるように備えておくことは重要
     - Visual Testing はただの Assertion 手段
     - 無からテストケースは生まれない
+  - Component Test の位置付け
+    - 静的解析
+    - 単体テスト/Component テスト/E2E
   - Component Test に Storybook を用いている理由
     - ~~正直、昔ほどには Storybook が好きではない~~ (これは口頭での補足に留める)
     - 「複数のテスト手法をバランス良く」となった場合に、Component テストで利用する基盤はなるべく揃えておきたい
-      - 静的解析/単体テスト/Component テスト/E2E
-        - Jest / Vitest から単体テストとして再利用できる
-        - Component カタログとして利用できる
-        - Visual Testing に利用できる
+      - Jest / Vitest から単体テストとして再利用できる
+      - Component カタログとして利用できる
+      - Visual Testing に利用できる
       - Interaction Testing に利用できる
     - Storybook 一強
       - Alternative Storybook が育たない...
@@ -42,15 +45,15 @@
   - 2. 削れ 実行時間
     - Push した後の CI, どれくらい我慢できますか？
       - 5 min ~ 10 min くらい？
-    - a: 金で殴る
+    - a: 並列実行
       - CI のマシンパワーを増やして component テストの並列数を上げる
         - e.g. `--max-workers`
-    - b: CI の実行環境ごと並列化する
-      - e.g. `--shard`
-    - c: ランナーを分ける
+      - CI の実行環境ごと並列化する
+        - e.g. `--shard`
+    - b: ランナーを分ける
       - Component テストの全てにブラウザが必要というわけではないはず
-        - jsdom で十分なのであれば、jest / vitest の テストコード側に移す
-    - d: 無意味な `setTimeout` をやめろ
+        - jsdom で十分なのであれば、Jest / Vitest の テストコード側に移す
+    - c: 無意味な `setTimeout` をやめろ
   - 3. CSF を使いこなせ
     - `storybook/test`, Storybook App
     - CSF でできることを押さえておくと、コンポーネントテストの記述の幅が広がる
