@@ -80,3 +80,11 @@
 - 結論「global な API のパッチは長期的には誰も幸せにならない」
 - 参考資料
   - https://speakerdeck.com/ryo_manba/fetch-kuo-zhang-tokiyatusiyuji-gou-nowei-iwoli-jie-suru
+
+## Outline alt
+
+- Next.js v15 で msw が使えるようになる！
+- 今まで使えなかったの？ -> 使えなかったんです
+- v14 でも msw/node が使いたい
+- `--require`
+- この話と似たようなことが他にもあった
