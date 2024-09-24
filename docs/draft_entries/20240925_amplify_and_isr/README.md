@@ -3,12 +3,15 @@
 今まで食わず嫌い気味に避けてきた Amplify を少しだけ触ってみたので、その覚書。
 
 一口に Amplify といっても色々なコンポーネントがあるが、ここで取り上げるのは主に Amplify Hosting について。
-
 結論を先に書いておくと、Incremental Static Regeneration(ISR) メインで Next.js を使いたい場合にホスティング先として Amplify を選択するのは避けたほうがよい。
 
 https://docs.aws.amazon.com/amplify/latest/userguide/ssr-Amplifysupport.html#supported-unsupported-features に記載されているとおり、 Amplify では Incremental Static Regeneration(ISR) がサポートされている。
 
 ## Next.js ISR とは
+
+Next.js における ISR(Incremental Static Regeneration) は SSG(Static Site Generate) の発展形である。
+
+コード上は、 SSG の場合と同じく `getStaticProps` を利用する (Pages Router の場合)。
 
 ```jsx
 /* src/pages/index.jsx */
@@ -24,21 +27,42 @@ export const getStaticProps = async () => {
   };
 };
 
-export default function Page({ articles }) {
+export default function ArticleListPage({ articles }) {
   /* articles props を利用して記事一覧ページを描画 */
+}
+```
+
+`getStaticProps` なので、Next.js がキャッシュとしてページの HTML および props 相当の JSON をビルド時に出力する。
+ここまでは SSG の場合と同じだが、 `revalidate: 600` のようにキャッシュの有効期間を付与することで、この有効期限が切れたら再検証(= revalidation) が行われる。
+
+App Router でも同様の挙動を取るようにすることは可能で、上記と同じ内容を App Router で実装する場合は以下のようになる。この場合、Next.js がキャッシュする対象は HTML および RSC ペイロードとなる。 Full Route Cache と呼ばれるレイヤのキャッシュである。
+
+```jsx
+/* src/app/page.jsx */
+
+export const dynamic = "force-static";
+export const revalidate = 600;
+
+export default async function AricleListPage() {
+  const res = await fetch("https://my-headless-cms.com/api/articles");
+  const data = await res.json();
+
+  /* data を利用して記事一覧ページを描画 */
 }
 ```
 
 Next.js の ISR は、Stale while revalidate ライクな挙動を取る。
 
-- Cache が fresh であれば、キャッシュしてあるコンテンツをレスポンスとして返す
+- Cache が fresh であれば、キャッシュしてあるコンテンツ (HTML or JSON or RSC ペイロード) をレスポンスとして返す
 - Cache が stale していれば、stale したキャッシュをレスポンスとして返す
   - と同時に、キャッシュを revalidate する
 - Cache が存在しなければ、キャッシュを生成した後にレスポンスを返す
 
 ## コールドスタートが遅い
 
-Amplify Hosting Compute の裏側では Lambda が動作している。
+ここからは、 Amplify Hosting に ISR アプリケーションをデプロイした場合の問題点を記述していく。
+
+Amplify Hosting から見ると、Next.js ISR も SSR の類型とみなされ、Amplify の裏側では Lambda が動作することになる。
 
 Lambda ではよく知られた問題だと思うが、コールドスタートが発生するとかなり遅い。
 
@@ -55,9 +79,9 @@ Next.js 、すなわち Lambda がキャッシュの状態判定を行うわけ�
 
 ref: https://docs.aws.amazon.com/lambda/latest/dg/provisioned-concurrency.html
 
-しかし Amplify の場合、Amplify が作成した Lambda を開発者が触ることができないため(Amplify CLI で `amplify add function` のように追加した Lambda 関数ではなく、 Amplify Hosting Compute の裏で動いている Lambda のことである)、チューニングも厳しい。
+しかし Amplify の場合、Amplify が作成した Lambda を開発者が触ることができないため(Amplify CLI で `amplify add function` のように追加した Lambda 関数ではなく、 Amplify Hosting SSR の裏で動いている Lambda のことである)、チューニングも厳しい。
 
-ちなみに、自分のアカウント上に Lambda のリソースが作成されていないのに、なぜ Lambda であると言い切っているのかというと、以下を Amplify Hosting Compute で Deploy し、`AWS_Lambda_nodejs20.x` の値を確認したため。 [Amplify Hosting のドキュメント](https://docs.aws.amazon.com/amplify/latest/userguide/welcome.html) に目を通したものの「裏で動いているのが Lambda である」との記述を見つけることはできなかった。
+ちなみに、自分のアカウント上に Lambda のリソースが作成されていないのに、なぜ Lambda であると言い切っているのかというと、以下を Amplify に Deploy し、`AWS_Lambda_nodejs20.x` の値を確認したため。 [Amplify Hosting のドキュメント](https://docs.aws.amazon.com/amplify/latest/userguide/welcome.html) に目を通したものの「裏で動いているのが Lambda である」との記述を見つけることはできなかった。
 
 ```tsx
 /* src/app/page.tsx */
@@ -93,7 +117,6 @@ Amplify では永続化層として DynamoDB などを選択できるもの、Ne
 
 Next.js のキャッシュにまつわる問題はまだ存在している。
 
-Next.js では、ルーティング方法に App Router / Pages Router の 2 通りが存在する。
 ルーティング方式で App Router を選択している場合、新しくキャッシュを書き込めない。以下のように `EROFS` 例外が発生する。
 
 ```
@@ -142,6 +165,5 @@ ref: https://nextjs.org/blog/next-13-3#static-export-for-app-router
 ## おわりに
 
 確かに、Amplify CLI や Amplify コンソールから簡単にデプロイできるし、AWS の知識もほぼ不要だし、無料枠もそこそこあるため、比較的小規模なプロジェクトを短時間で立ち上げるのには向いていると思っていた。
-しかしながら、触ってみた感想としては最悪に近い。自分では絶対に運用したくない。
-
+しかしながら、触ってみた感想を率直に述べるのであれば、本番運用に耐えられる気がしない。
 コールドスタートが遅い件に関しては LLRT に期待して目をつぶったとしても、キャッシュが共有されていない・書き込めない、Revalidate できない挙げ句に Static Export もできないという体たらくでは、とてもじゃないが「Next.js に対応している」とは言えないのではなかろうか。
