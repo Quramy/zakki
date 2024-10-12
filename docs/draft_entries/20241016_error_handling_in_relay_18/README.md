@@ -1,4 +1,4 @@
-# Relay の `@throwOnFieldError` と GraphQL Nullability
+# Relay v18 の `@throwOnFieldError` と GraphQL Nullability
 
 ## はじめに
 
@@ -15,7 +15,7 @@ https://quramy.medium.com/graphql-%E3%81%AE-semantic-non-null-type-rfc-%E3%81%AB
 
 Relay v18 で追加された `@throwOnFieldError` および `@catch` はクライアントサイド, すなわち GraphQL オペレーション側に記述する Directive である。
 
-以降の解説のため、以下の GraphQL クエリを題材とする。
+以降の解説のため、次の GraphQL クエリを題材とする。
 
 ```gql
 query {
@@ -28,7 +28,7 @@ query {
 }
 ```
 
-このクエリに対して、`Book.author` フィールドにてエラーが発生したしよう。この場合、レスポンスは `data` に正常に取得できた部分を、`errors` にエラーが発生した箇所の情報が格納される。
+このクエリに対して、`author` フィールドにてエラーが発生したしよう。この場合、レスポンスは `data` に正常に取得できた部分を、`errors` にエラーが発生した箇所の情報が格納される。
 
 ```json
 {
@@ -42,19 +42,19 @@ query {
 }
 ```
 
-また、エラーが発生したフィールドについては、問答無用で `null` となる。
+また、`data` 部におけるエラーが発生したフィールドの値は問答無用で `null` となる。これは GraphQL のエラーハンドリングを考える上で重要な性質であるため、後半で別途詳細を解説する。
 
-これは GraphQL の仕様に定められた挙動であるが、おそらく Relay ユーザーの場合、この `errors` 部分を意識してきたことはあまりないのではなかろうか。
+上記の `errors` 部分は GraphQL の仕様に定められた挙動であるが、おそらく Relay ユーザーの場合、この GraphQL Errors を意識してきたことはあまりないのではなかろうか。というのは、Relay アプリケーションの場合、データアクセスは主に `useFragment` Hook 関数に頼ることになるが、クエリレスポンスにおける `errors` の情報が `useFragment` の結果には影響を及ぼさなかったからだ。
 
-というのは、Relay アプリケーションの場合、データアクセスは主に `useFragment` Hook 関数に頼ることになるが、クエリレスポンスにおける `errors` の情報が `useFragment` の結果には影響を及ぼさなかったからだ。
-
-`@throwOnFieldError` や `@catch` を利用すると、クエリレスポンスで発生したエラー情報が `useFragment` 結果に伝達されるようになる。 Relay Runtime が `errors` に集約された情報を Leaf たる Fragment 側に分配してくれると言い換えることもできよう。
+`@throwOnFieldError` や `@catch` を利用すると、クエリレスポンスで発生したエラー情報が `useFragment` 結果に伝達されるようになる。 Relay Runtime が `errors` に集約された情報を Leaf たる Fragment 側に分配してくれると言い換えることもできる。
 
 以前に https://quramy.medium.com/graphql-error-%E4%B8%8B%E3%81%8B%E3%82%89%E8%A6%8B%E3%82%8B%E3%81%8B-%E6%A8%AA%E3%81%8B%E3%82%89%E8%A6%8B%E3%82%8B%E3%81%8B-3924880be51f にて、
 
-> GraphQL の `errors` フィールドの場合、コロケーションと組み合わせとの相性があまりにも悪いのだ。
+> GraphQL の `errors` フィールドの場合、コロケーションとの組み合わせの相性があまりにも悪いのだ。
 
 と書いたことがあるのだが、v18 で導入された Directive によって、この考え方も見直されたと言えよう。
+
+エラー創出まで含めてコンポーネントに委ねることができるようになったというのは、コロケーション大好きな筆者にとって、好ましい機能追加である。
 
 ### `@throwOnFieldError`
 
@@ -292,9 +292,7 @@ function BookSummary({ fragmentRef }: Props) {
 
 ## v18 以降の Relay Null Handling スタンダード
 
-ここまで Relay v18 で導入された 新規 Directive の利用方法とその存在意義を解説してきた。
-
-最後に、これらをどのように使うとよいかについて、現時点での筆者の考えを記載しておく。
+ここまで Relay v18 で導入された 新規 Directive の利用方法とその存在意義を解説してきた。最後に、これらをどのように使うとよいかについて、現時点での筆者の考えを記載しておく。
 
 ### Nullable なフィールドへ `@semanticNonNull` を付与を検討する
 
