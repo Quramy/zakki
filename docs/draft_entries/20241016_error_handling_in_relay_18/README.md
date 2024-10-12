@@ -260,7 +260,7 @@ type Book {
 
 前半に解説した `@throwOnFieldError` や `@catch` を使うことで、Relay コンポーネントはフィールドが Nullish かどうかだけでなく、そのフィールドがエラーだったかどうかまで認識できるようになった。また、Relay Compiler は当該フィールドに `@semanticNonNull` が付与されているかどうかを知っている。
 
-Semantic Non Null Field の持つ「エラーが発生しない限りは Null ではない」と、`@throwOnFieldError` が持つ「フィールドでエラーが発生したらコンポーネントがエラーを投げる」を組み合わせると、コンポーネントから上長な Null Check を排除できるのだ。
+Semantic Non Null Field の持つ「エラーが発生しない限りは Null ではない」と、`@throwOnFieldError` が持つ「フィールドでエラーが発生したらコンポーネントがエラーを投げる」を組み合わせると、コンポーネントから冗長な Null Check を排除できるのだ。
 
 ```gql
 type Book {
