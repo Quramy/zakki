@@ -28,7 +28,7 @@ query {
 }
 ```
 
-このクエリに対して、`author` フィールドにてエラーが発生したしよう。この場合、レスポンスは `data` に正常に取得できた部分を、`errors` にエラーが発生した箇所の情報が格納される。
+このクエリに対して、`author` フィールドにてエラーが発生したしよう。この場合、レスポンスには `data` に正常に取得できた部分が、`errors` にエラーが発生した箇所の情報が格納される。
 
 ```json
 {
@@ -42,11 +42,11 @@ query {
 }
 ```
 
-また、`data` 部におけるエラーが発生したフィールドの値は問答無用で `null` となる。これは GraphQL のエラーハンドリングを考える上で重要な性質であるため、後半で別途詳細を解説する。
+また、`data` 部におけるエラーが発生したフィールドの値は `null` となる。これは GraphQL のエラーハンドリングを考える上で重要な性質であるため、後半で別途詳細を解説する。
 
 上記の `errors` 部分は GraphQL の仕様に定められた挙動であるが、おそらく Relay ユーザーの場合、この GraphQL Errors を意識してきたことはあまりないのではなかろうか。というのは、Relay アプリケーションの場合、データアクセスは主に `useFragment` Hook 関数に頼ることになるが、クエリレスポンスにおける `errors` の情報が `useFragment` の結果には影響を及ぼさなかったからだ。
 
-`@throwOnFieldError` や `@catch` を利用すると、クエリレスポンスで発生したエラー情報が `useFragment` 結果に伝達されるようになる。 Relay Runtime が `errors` に集約された情報を Leaf たる Fragment 側に分配してくれると言い換えることもできる。
+`@throwOnFieldError` や `@catch` を利用すると、クエリレスポンスで発生した GraphQL Errors 情報が `useFragment` 結果に伝達されるようになる。 Relay Runtime が `errors` に集約された情報を Leaf たる Fragment 側に分配してくれると言い換えることもできる。
 
 以前に https://quramy.medium.com/graphql-error-%E4%B8%8B%E3%81%8B%E3%82%89%E8%A6%8B%E3%82%8B%E3%81%8B-%E6%A8%AA%E3%81%8B%E3%82%89%E8%A6%8B%E3%82%8B%E3%81%8B-3924880be51f にて、
 
@@ -54,7 +54,7 @@ query {
 
 と書いたことがあるのだが、v18 で導入された Directive によって、この考え方も見直されたと言えよう。
 
-エラー創出まで含めてコンポーネントに委ねることができるようになったというのは、コロケーション大好きな筆者にとって、好ましい機能追加である。
+エラー送出まで含めてコンポーネントに委ねることができるようになったというのは、コロケーション大好きな筆者にとって、好ましい機能追加である。
 
 ### `@throwOnFieldError`
 
@@ -197,6 +197,8 @@ ref: https://spec.graphql.org/October2021/#sec-Handling-Field-Errors
 `Book.author` が Non Null Type であるということは、何かしらの障害で著者情報管理サービスが応答不能になった場合に `Book.auhtor` だけでなく、参照可能である `Book.title` まで Null Bubbling に巻き込まれることを意味する。
 
 このように、Non Null Type の利用は Schema としてのレジリエンスを低める方向に作用してしまうため、Type 間の参照は Nullable とすることが[ベストプラクティス](https://graphql.org/learn/best-practices/#nullability)とされている[^1]。
+
+ref: https://graphql.org/learn/best-practices/#nullability
 
 ### Nullable Field が引き起こすトレードオフ
 
@@ -356,9 +358,9 @@ type Book {
 
 ### `@throwOnFieldError` to Error Boundary
 
-`useFragment` や `usePreloadedQuery` で用いる GraphQL Fragment, Operation の定義時には `@throwOnFieldError` を付与すること。これによりコンポーネントにおける冗長な Null Check が不要となる。
+`useFragment` や `usePreloadedQuery` で用いる GraphQL Fragment, Operation の定義時には `@throwOnFieldError` を付与すること。これにより、フィールドが Semantic Non Null なのであればコンポーネントにおける冗長な Null Check が不要となる。
 
-また、GraphQL errors がコンポーネントから throw されて、Error Boundary でキャッチされる、というのは React のコードとしても自然な形であると言えよう。
+また、GraphQL Error がコンポーネントから throw されて Error Boundary でキャッチされる、というのは React のコードとしても自然な形であると言えよう。
 `useFragment` Hook 関数として見ると、Fragment が Deferrable な場合に Promise が throw されて、上位 コンポーネントの Suspense でキャッチするのと類似している[^4]。
 
 Partial Error を考慮して細かく Error Boundary で Fragment Container から投げられたエラーをハンドリングしてもよいが、まずはアプリケーション最上位の Error Boundary でキャッチして「予期せぬエラーが発生しました」画面の表示に留めるもよしである。Partial Error については Schema Data Source がどこまで分散しているかなどのコンテキストによって、その必要性が異なってくるが、いずれにせよ通常の React アプリケーションのエラーハンドリング作法に乗っておくことがまずは重要。
@@ -452,7 +454,7 @@ const Book = {
 };
 ```
 
-筆者は TypeScript で GraphQL のサーバー側の実装を行うときは、[GraphQL-Codegen の typescript-resolvers プラグイン](https://the-guild.dev/graphql/codegen/plugins/typescript/typescript-resolvers) で TypeScript 用の Resolver Types を生成するのだが「 `@semanticNonNull` を付与したフィールドは Null を返却できない」というオプションあると、より安全に作業を進められるのではと考えている[^5]。
+筆者は TypeScript で GraphQL のサーバー側の実装を行うときは、[GraphQL-Codegen の typescript-resolvers プラグイン](https://the-guild.dev/graphql/codegen/plugins/typescript/typescript-resolvers) で TypeScript 用の Resolver Types を生成するのだが「 `@semanticNonNull` を付与したフィールドは Null を返却できない」というオプションがあると、より安全に作業を進められるのではと考えている[^5]。
 
 ## 参考資料
 
