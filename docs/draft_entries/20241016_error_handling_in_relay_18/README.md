@@ -403,9 +403,54 @@ fragment BookSummary_Book on Book {
 
 もし、Semantic Non Null の意味で `@required` を利用しているのであれば、 `@semanticNonNull` と `@throwOnFieldError` で代替可能であるので、乗り換えを検討するとよい。
 
-<!--
-## Appendix. Resolver Side
--->
+## Appendix. Resolver 実装と Semantic Non Null Field
+
+本エントリはクライアントサイドたる Relay を中心に書いてきたが、サーバー側の実装についても捕捉しておく。
+
+`@semanticNonNull` は「エラーにならない限り Null ではない」を表明するための Schema Directive であり、サーバー側はこの制約に準拠する必要がある。
+
+```gql
+type Book {
+  title: String!
+  author: User @semanticNonNull
+}
+```
+
+すなわち、 `@semanticNonNull` が付与された Field Resolver の実装にて Null をエラーの代わりに用いるコードを書いてはならない。
+
+```js
+const Book = {
+  author: async (parent, _, context) => {
+    try {
+      return await context.userServiceClient.fetchById(parent.authorId);
+    } catch (err) {
+      console.error("Unexpected error occurs.", err);
+
+      // Bad
+      return null;
+    }
+  },
+};
+```
+
+以下のように修正すること。
+
+```js
+const Book = {
+  author: async (parent, _, context) => {
+    try {
+      return await context.userServiceClient.fetchById(parent.authorId);
+    } catch (err) {
+      console.error("Unexpected error occurs.", err);
+
+      // Good
+      throw err;
+    }
+  },
+};
+```
+
+筆者は TypeScript で GraphQL のサーバー側の実装を行うときは、[GraphQL-Codegen の typescript-resolvers プラグイン](https://the-guild.dev/graphql/codegen/plugins/typescript/typescript-resolvers) で TypeScript 用の Resolver Types を生成するのだが「 `@semanticNonNull` を付与したフィールドは Null を返却できない」というオプションあると、より安全に作業を進められるのではと考えている[^5]。
 
 ## 参考資料
 
@@ -418,3 +463,4 @@ fragment BookSummary_Book on Book {
 [^2]: Schema のメタデータ問題は太古の昔から未解決である。 https://github.com/graphql/graphql-spec/issues/300
 [^3]: 厳密には relay-compiler の v18.0.0 では `@catch` 側は未実装. https://github.com/facebook/relay/pull/4794 で修正された
 [^4]: `@defer` と Suspense については https://quramy.medium.com/render-as-you-fetch-incremental-graphql-fragments-70e643edd61e を参照されたし
+[^5]: 少し前に自分で Issue と PR を書いた. 2024 年 10 月現在オープンなまま: Issue: https://github.com/dotansimha/graphql-code-generator/issues/10151, PR: https://github.com/dotansimha/graphql-code-generator/pull/10159
