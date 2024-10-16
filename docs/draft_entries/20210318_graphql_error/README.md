@@ -98,3 +98,9 @@ GraphQL の `errors` フィールドの場合、コロケーションと組み�
 > Since discussing this issue, a common best practice has been to include user errors as part of the schema itself so they can contain domain specific information.
 
 https://github.com/graphql/graphql-spec/issues/135#issuecomment-426164615
+
+## 2024.10.16 追記
+
+Relay v18 からは Relay Runtime が GraphQL `errors` フィールドを `useFragment` などの結果に分配する機能が備わったため、コンポーネントレイヤから GraphQL Errors が扱いやすくなっている:
+
+https://quramy.medium.com/relay-v18-%E3%81%AE-throwonfielderror-%E3%81%A8-graphql-nullability-55ce63c3aae2

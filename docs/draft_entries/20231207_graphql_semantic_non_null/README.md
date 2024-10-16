@@ -2,6 +2,12 @@
 
 これは [GraphQL Advent Calendar](https://qiita.com/advent-calendar/2023/graphql) ７日目の記事です。
 
+_2024.10.16 追記_
+
+本エントリのその後について、https://quramy.medium.com/relay-v18-%E3%81%AE-throwonfielderror-%E3%81%A8-graphql-nullability-55ce63c3aae2 に記載しているので、まずはこちらを読んでください。
+
+_追記 ここまで_
+
 GraphQL Specification に [RFC: SemanticNonNull type (null only on error)](https://github.com/graphql/graphql-spec/pull/1065) という RFC が上がっていたので、ざっと読んでみました。
 2023.12 月現在では Stage 0 なので、取り込まれない可能性もおおいにあり得ることをご承知おきください。
 
