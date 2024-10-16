@@ -84,7 +84,7 @@ function BookSummary({ fragmentRef }) {
 
 ### `@catch`
 
-もう一つの Directive, `@catch` はフィールドに付与して利用する。`@throwOnFieldError` が JavaScript Error を throw するのに対し、`@catch` は Hook の結果が Result 型となる。
+もう一つの Directive, `@catch` はフィールドに付与して利用する。`@throwOnFieldError` が GraphQL Error を JavaScript Error として throw するのに対し、`@catch` はその名の通り発生した GraphQL Error を捕捉するために用いる。
 
 ```jsx
 function BookSummary({ fragmentRef }) {
@@ -101,13 +101,45 @@ function BookSummary({ fragmentRef }) {
   );
 
   if (!data.author.ok) {
-    console.log(data.author.value); // [{ "Something went wrong" }]
-    return null;
+    console.log(data.author.errors); // [{ message: "Something went wrong" }]
+    return <AuthorFieldError />;
   }
 
   const author = data.author.value;
+
+  // render using book and author data
 }
 ```
+
+上記の例は、`Book.author` フィールドそれ自身と配下のフィールドで GraphQL Error が発生した場合に反応する。コードでも例示した通り `@catch` Directive が付与されたフィールドは Result 型に変更されるため、正常系の値を取り出すには
+`data.author.ok` が `true` であることを確認してから `data.author.value` のようにアクセスする必要がある。
+
+```ts
+type Result<T> =
+  | {
+      ok: true;
+      value: T;
+    }
+  | {
+      ok: false;
+      errors: unknown[];
+    };
+```
+
+`@catch` を多段階に適用させた場合、GraphQL Error が発生したフィールドから見て一番近い `@catch` に捕捉される。
+
+```gql
+fragment SomeFragment on AwesomeType {
+  hoge @catch {
+    fuga
+    piyo @catch
+  }
+}
+```
+
+- `hoge` で GraphQL Error が発生した場合: `hoge` の `@catch` に捕捉される
+- `hoge.fuga` で GraphQL Error が発生した場合: `hoge` の `@catch` に捕捉される
+- `hoge.piyo`で GraphQL Error が発生した場合: `piyo` の `@catch` に捕捉される
 
 ## Semantic Non Null
 
