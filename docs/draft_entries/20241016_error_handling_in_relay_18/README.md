@@ -78,9 +78,7 @@ function BookSummary({ fragmentRef }) {
 }
 ```
 
-上記の例では、`BookSummary_Book` Fragment のいずれかのフィールドにエラーが存在する場合に `useFragment` Hook それ自体がエラーを投げる。
-
-`BookSummary` コンポーネントは描画されず、上位の Error Boundary に補足されるまでエラーがコンポーネントツリーの末端から頂点へ伝播していく。
+上記の例では、`BookSummary_Book` Fragment のいずれかのフィールドに GraphQL Error が存在する場合に `useFragment` Hook それ自体が JavaScript Error を投げる。したがって `BookSummary` コンポーネントは描画されずに、上位の Error Boundary に補足されるまでエラーが React コンポーネントツリーの末端から頂点へ伝播していく。
 
 ### `@catch`
 
@@ -198,7 +196,7 @@ ref: https://spec.graphql.org/October2021/#sec-Handling-Field-Errors
 前述の Schema について、書籍の情報を管理しているサービスと著者の情報を管理しているサービスが分散しており、GraphQL Resolver はそれぞれのマイクロサービスと通信していたとしよう。
 `Book.author` が Non Null Type であるということは、何かしらの障害で著者情報管理サービスが応答不能になった場合に `Book.auhtor` だけでなく、参照可能である `Book.title` まで Null Bubbling に巻き込まれることを意味する。
 
-このように、Non Null Type の利用は Schema としてのレジリエンスを低める方向に作用してしまうため、昔から Type 間の参照は Nullable とすることが[ベストプラクティス](https://graphql.org/learn/best-practices/#nullability)とされてきた[^1]。
+このように、Non Null Type の利用は Schema としてのレジリエンスを低める方向に作用してしまうため、Type 間の参照は Nullable とすることが[ベストプラクティス](https://graphql.org/learn/best-practices/#nullability)とされている[^1]。
 
 ### Nullable Field が引き起こすトレードオフ
 
@@ -252,13 +250,13 @@ console.log(data.author.name);
 
 ### `@semanticNonNull` Schema Directive
 
-結局のところ、Schema を設定する際に、「このフィールドは基本的には Null にはならない」を表明できていなかったことが、混乱を生んでいる。
+結局のところ、GraphQL Schema が「このフィールドは基本的には Null にはならない」を表明できていないことが混乱を生んでいる。
 
 1. Non Null Type: field は確実に値をもつ: `author: User!`
 2. Nullable Type: field は 業務上も Null となり得る: ???
 3. Semantic Non Null Type: field は は障害が発生しない限り Null にはなり得ない: ???
 
-2 と 3 の区別が付けば以下のような残念なコメントは不要になるはずである。
+GraphQL Schema が構造的に 2. と 3. の区別を付けられるようになっていれば以下のようなコメントは不要になるはずである。
 
 ```gql
 type Book {
@@ -271,9 +269,9 @@ type Book {
 }
 ```
 
-GraphQL SDL への Syntax 追加という意味では、2024 年 10 月現在では [GraphQL Nullability WG](https://github.com/graphql/nullability-wg)で議論がなされている最中であり、どのような表現となるかは未定である(例えば、https://github.com/graphql/graphql-spec/pull/1065 には `!` を前置することで Semantic Non Null を表現する RFC である)。
+もちろん GraphQL として見分けを付けられるようにするためには、GraphQL Schema Definition Language(SDL) に何かしらの新しい文法を追加しなくてはならない。2024 年 10 月現在では [GraphQL Nullability WG](https://github.com/graphql/nullability-wg)で議論がなされている最中であり、どのような表現となるかは未定である(例えば、https://github.com/graphql/graphql-spec/pull/1065 には `!` を前置することで Semantic Non Null を表現する RFC である)。
 
-そこで、暫定的に Semantic Non Null Type と Nullable Type を区別するために Relay の Jordan Eldredge 氏の主導のもと考え出されたのが `@semanticNonNull` Schema Directive である。
+そこで、暫定的に Semantic Non Null Type と Nullable Type を区別するために Relay の Jordan Eldredge 氏の主導のもとで考え出されたのが `@semanticNonNull` Schema Directive である。
 
 ```gql
 directive @semanticNonNull(levels: [Int] = [0]) on FIELD_DEFINITION
@@ -321,6 +319,10 @@ function BookSummary({ fragmentRef }: Props) {
 ```
 
 上記は `@throwOnFieldError` の例であるが、 `@catch` においても、`data.author.ok` を確認したあとは、 `data.author.value` に Strict な型が手に入る[^3]。
+
+なお、 `@semanticNonNull` は Relay 発の Schema Directive ではあるものの、Relay 以外のフレームワークでも対応しているものがある。
+
+ref: https://www.apollographql.com/docs/kotlin/advanced/nullability#semanticnonnull
 
 ## v18 以降の Relay Null Handling スタンダード
 
